@@ -1,4 +1,5 @@
 body {
+    position: relative;
     background-color: whitesmoke;
     font-family: Avenir Next, Avenir, SegoeUI, sans-serif;
     font-size: 20px;
@@ -31,4 +32,19 @@ input {
     font-size: 20px;
     width: 80px;
     text-align: right;
+}
+
+.total-progress {
+    background-color: darkgrey;
+    position: fixed;
+    font-size: 40px;
+    text-align: center;
+    padding-top: 20px;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.total-progress + .pin-inputs {
+    padding-top: 100px;
 }

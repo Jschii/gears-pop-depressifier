@@ -137,7 +137,6 @@
 (defn- calc-percentage [p]
   (let [costs ((:rarity p) costs)
         current-pins (+ (reduce + (take (- (:level p) 1) (map :dupes costs))) (:dupes p) 1)
-        ;xp-from-pin (reduce + (take (- (:level p) 1) (map :xp costs)))
         max-pins (reduce + (map :dupes costs))]
     (gstring/format "%.2f" (* 100 (double (/ current-pins max-pins))))))
 
@@ -163,8 +162,17 @@
        [:p (calc-percentage pin)]
        [:progress {:id "pin" :value (calc-percentage pin) :max "100"}]]))])
 
+(defn current-xp []
+  (reduce + (map (fn [p] (reduce + (take (- (:level p) 1) (map :xp ((:rarity p) costs))))) @pins))) 
+  
+(defn total-progress []
+  [:div.total-progress
+   [:span "Progress towards level 20: "]
+   [:span (str (gstring/format "%.2f" (* 100 (double (/ (current-xp) max-xp)))) "%")]])
+
 (defn root []
   [:div
+   [total-progress]
    [pin-inputs]])
 
 (defn ^:export run []
