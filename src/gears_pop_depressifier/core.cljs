@@ -65,74 +65,65 @@
 (def xps [20 30 50 80 120 180 300 450 700 1100 1700 2600 4100 6400 10000 16000 25000 38000 60000])
 (def max-xp (reduce + xps))
 
-(defonce pins (local-storage (r/atom [{:name "spotters" :rarity :common :level 1 :dupes 0}
-                                      {:name "longshot gear" :rarity :common :level 1 :dupes 0}
-                                      {:name "scion" :rarity :common :level 1 :dupes 0}
-                                      {:name "decoy" :rarity :common :level 1 :dupes 0}
-                                      {:name "stun tracker" :rarity :common :level 1 :dupes 0}
-                                      {:name "frag grenade" :rarity :common :level 1 :dupes 0}
-                                      {:name "locust drone" :rarity :common :level 1 :dupes 0}
-                                      {:name "shepherds" :rarity :common :level 1 :dupes 0}
-                                      {:name "ink grenade" :rarity :common :level 1 :dupes 0}
-                                      {:name "ticker" :rarity :common :level 1 :dupes 0}
-                                      {:name "onyx guards" :rarity :common :level 1 :dupes 0}
-                                      {:name "shock barrier" :rarity :common :level 1 :dupes 0}
-                                      {:name "stun grenade" :rarity :common :level 1 :dupes 0}
-                                      {:name "savage granadier" :rarity :common :level 1 :dupes 0}
-                                      {:name "juvies" :rarity :rare :level 1 :dupes 0}
-                                      {:name "sentry" :rarity :rare :level 1 :dupes 0}
-                                      {:name "power genertor" :rarity :rare :level 1 :dupes 0}
-                                      {:name "clayton carmine" :rarity :rare :level 1 :dupes 0}
-                                      {:name "augustus cole" :rarity :rare :level 1 :dupes 0}
-                                      {:name "boomer" :rarity :rare :level 1 :dupes 0}
-                                      {:name "wretches" :rarity :rare :level 1 :dupes 0}
-                                      {:name "bernadette mataki" :rarity :rare :level 1 :dupes 0}
-                                      {:name "drone division" :rarity :rare :level 1 :dupes 0}
-                                      {:name "lancer crew" :rarity :rare :level 1 :dupes 0}
-                                      {:name "gnasher gang" :rarity :rare :level 1 :dupes 0}
-                                      {:name "del walker" :rarity :rare :level 1 :dupes 0}
-                                      {:name "deadeye" :rarity :rare :level 1 :dupes 0}
-                                      {:name "sam byrne" :rarity :epic :level 1 :dupes 0}
-                                      {:name "marcus fenix" :rarity :epic :level 1 :dupes 0}
-                                      {:name "dominic santiago" :rarity :epic :level 1 :dupes 0}
-                                      {:name "grinder" :rarity :epic :level 1 :dupes 0}
-                                      {:name "hammer of dawn" :rarity :epic :level 1 :dupes 0}
-                                      {:name "drop pod" :rarity :epic :level 1 :dupes 0}
-                                      {:name "fahz chutani" :rarity :epic :level 1 :dupes 0}
-                                      {:name "dr-1" :rarity :epic :level 1 :dupes 0}
-                                      {:name "damon baird" :rarity :epic :level 1 :dupes 0}
-                                      {:name "butcher" :rarity :epic :level 1 :dupes 0}
-                                      {:name "jack" :rarity :epic :level 1 :dupes 0}
-                                      {:name "kait diaz" :rarity :epic :level 1 :dupes 0}
-                                      {:name "anya stroud" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "victor hoffman" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "mina jinn" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "myrrah" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "old man marcus" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "skorge" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "general raam" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "winter kait" :rarity :legendary :level 1 :dupes 0}
-                                      {:name "lancer gear" :rarity :common :level 1 :dupes 0}
-                                      {:name "shock grenade" :rarity :common :level 1 :dupes 0}
-                                      {:name "nemacysts" :rarity :common :level 1 :dupes 0}
-                                      {:name "snub soldiers" :rarity :common :level 1 :dupes 0}
-                                      {:name "kantus" :rarity :common :level 1 :dupes 0}
-                                      {:name "sentinel" :rarity :rare :level 1 :dupes 0}
-                                      {:name "reyna diaz" :rarity :epic :level 1 :dupes 0}
-                                      {:name "jd fenix" :rarity :epic :level 1 :dupes 0}
-                                      {:name "seeder" :rarity :epic :level 1 :dupes 0}
-                                      {:name "emergency hole" :rarity :epic :level 1 :dupes 0}
-                                      {:name "windflare" :rarity :epic :level 1 :dupes 0}]) :pins))
-
-#_(defn -main []
-    (let [result (for [p pins]
-                   (let [costs ((:rarity p) costs)
-                         current-pins (+ (reduce + (take (- (:level p) 1) (map :dupes costs))) (:dupes p) 1)
-                         xp-from-pin (reduce + (take (- (:level p) 1) (map :xp costs)))
-                         max-pins (reduce + (map :dupes costs))]
-                     [(:name p) current-pins max-pins xp-from-pin]))
-          current-xp (reduce + (map last result))]
-      (println (format "%.3f" (double (/ current-xp max-xp))))))
+(defonce all-pins [{:name "spotters" :rarity :common :level 1 :dupes 0}
+                   {:name "longshot gear" :rarity :common :level 1 :dupes 0}
+                   {:name "scion" :rarity :common :level 1 :dupes 0}
+                   {:name "decoy" :rarity :common :level 1 :dupes 0}
+                   {:name "stun tracker" :rarity :common :level 1 :dupes 0}
+                   {:name "frag grenade" :rarity :common :level 1 :dupes 0}
+                   {:name "locust drone" :rarity :common :level 1 :dupes 0}
+                   {:name "shepherds" :rarity :common :level 1 :dupes 0}
+                   {:name "ink grenade" :rarity :common :level 1 :dupes 0}
+                   {:name "ticker" :rarity :common :level 1 :dupes 0}
+                   {:name "onyx guards" :rarity :common :level 1 :dupes 0}
+                   {:name "shock barrier" :rarity :common :level 1 :dupes 0}
+                   {:name "stun grenade" :rarity :common :level 1 :dupes 0}
+                   {:name "savage granadier" :rarity :common :level 1 :dupes 0}
+                   {:name "juvies" :rarity :rare :level 1 :dupes 0}
+                   {:name "sentry" :rarity :rare :level 1 :dupes 0}
+                   {:name "power genertor" :rarity :rare :level 1 :dupes 0}
+                   {:name "clayton carmine" :rarity :rare :level 1 :dupes 0}
+                   {:name "augustus cole" :rarity :rare :level 1 :dupes 0}
+                   {:name "boomer" :rarity :rare :level 1 :dupes 0}
+                   {:name "wretches" :rarity :rare :level 1 :dupes 0}
+                   {:name "bernadette mataki" :rarity :rare :level 1 :dupes 0}
+                   {:name "drone division" :rarity :rare :level 1 :dupes 0}
+                   {:name "lancer crew" :rarity :rare :level 1 :dupes 0}
+                   {:name "gnasher gang" :rarity :rare :level 1 :dupes 0}
+                   {:name "del walker" :rarity :rare :level 1 :dupes 0}
+                   {:name "deadeye" :rarity :rare :level 1 :dupes 0}
+                   {:name "sam byrne" :rarity :epic :level 1 :dupes 0}
+                   {:name "marcus fenix" :rarity :epic :level 1 :dupes 0}
+                   {:name "dominic santiago" :rarity :epic :level 1 :dupes 0}
+                   {:name "grinder" :rarity :epic :level 1 :dupes 0}
+                   {:name "hammer of dawn" :rarity :epic :level 1 :dupes 0}
+                   {:name "drop pod" :rarity :epic :level 1 :dupes 0}
+                   {:name "fahz chutani" :rarity :epic :level 1 :dupes 0}
+                   {:name "dr-1" :rarity :epic :level 1 :dupes 0}
+                   {:name "damon baird" :rarity :epic :level 1 :dupes 0}
+                   {:name "butcher" :rarity :epic :level 1 :dupes 0}
+                   {:name "jack" :rarity :epic :level 1 :dupes 0}
+                   {:name "kait diaz" :rarity :epic :level 1 :dupes 0}
+                   {:name "anya stroud" :rarity :legendary :level 1 :dupes 0}
+                   {:name "victor hoffman" :rarity :legendary :level 1 :dupes 0}
+                   {:name "mina jinn" :rarity :legendary :level 1 :dupes 0}
+                   {:name "myrrah" :rarity :legendary :level 1 :dupes 0}
+                   {:name "old man marcus" :rarity :legendary :level 1 :dupes 0}
+                   {:name "skorge" :rarity :legendary :level 1 :dupes 0}
+                   {:name "general raam" :rarity :legendary :level 1 :dupes 0}
+                   {:name "winter kait" :rarity :legendary :level 1 :dupes 0}
+                   {:name "lancer gear" :rarity :common :level 1 :dupes 0}
+                   {:name "shock grenade" :rarity :common :level 1 :dupes 0}
+                   {:name "nemacysts" :rarity :common :level 1 :dupes 0}
+                   {:name "snub soldiers" :rarity :common :level 1 :dupes 0}
+                   {:name "kantus" :rarity :common :level 1 :dupes 0}
+                   {:name "sentinel" :rarity :rare :level 1 :dupes 0}
+                   {:name "reyna diaz" :rarity :epic :level 1 :dupes 0}
+                   {:name "jd fenix" :rarity :epic :level 1 :dupes 0}
+                   {:name "seeder" :rarity :epic :level 1 :dupes 0}
+                   {:name "emergency hole" :rarity :epic :level 1 :dupes 0}
+                   {:name "windflare" :rarity :epic :level 1 :dupes 0}])
+(defonce pins (local-storage (r/atom all-pins) :pins))
 
 (defn- calc-percentage [p]
   (let [costs ((:rarity p) costs)
@@ -176,4 +167,5 @@
    [pin-inputs]])
 
 (defn ^:export run []
+  (reset! pins (mapv (comp first second) (group-by :name (concat @pins all-pins))))
   (rdom/render [root] (js/document.getElementById "app")))
