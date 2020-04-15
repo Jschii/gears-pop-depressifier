@@ -1,0 +1,50 @@
+body {
+    position: relative;
+    background-color: whitesmoke;
+    font-family: Avenir Next, Avenir, SegoeUI, sans-serif;
+    font-size: 20px;
+    text-shadow: 5px 5px 10px black;
+}
+
+.pin-inputs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+    width: 80%;
+    margin: auto;
+}
+
+.pin-input {
+    padding: 10px;
+}
+
+.pin-name {
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+input {
+    display: block;
+    border: 2px solid #8842d5;
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 20px;
+    width: 80px;
+    text-align: right;
+}
+
+.total-progress {
+    background-color: darkgrey;
+    position: fixed;
+    font-size: 40px;
+    text-align: center;
+    padding-top: 20px;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.total-progress + .pin-inputs {
+    padding-top: 100px;
+}
