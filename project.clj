@@ -6,8 +6,9 @@
                  [alandipert/storage-atom "1.2.4"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-figwheel "0.5.19"]]
-
+            [lein-figwheel "0.5.19"]
+            [lein-cljfmt "0.6.7"]]
+  
   :resource-paths ["resources" "target"]
   :clean-targets ^{:protect false} [:target-path]
 

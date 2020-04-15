@@ -1,9 +1,9 @@
 (ns gears-pop-depressifier.core
-    (:require [reagent.core :as r]
-              [reagent.dom :as rdom]
-              [goog.string :as gstring]
-              [goog.string.format]
-              [alandipert.storage-atom :refer [local-storage]]))
+  (:require [reagent.core :as r]
+            [reagent.dom :as rdom]
+            [goog.string :as gstring]
+            [goog.string.format]
+            [alandipert.storage-atom :refer [local-storage]]))
 
 (enable-console-print!)
 
@@ -127,7 +127,7 @@
 
 (defn- calc-percentage [p]
   (let [costs ((:rarity p) costs)
-        current-pins (+ (reduce + (take (- (:level p) 1) (map :dupes costs))) (:dupes p) 1)
+        current-pins (+ (reduce + (take (dec (:level p)) (map :dupes costs))) (:dupes p) 1)
         max-pins (reduce + (map :dupes costs))]
     (gstring/format "%.2f" (* 100 (double (/ current-pins max-pins))))))
 
@@ -135,27 +135,30 @@
   [:div.pin-inputs
    (doall
     (for [[index pin] (map-indexed vector @pins)]
-      ^{:key (:name pin)}
-      [:div.pin-input
-       [:p.pin-name (:name pin)]
-       [:label {:for "level"} "Level:"]
-       [:input {:type "number"
-                :id "level"
-                :min 1
-                :max 20
-                :value (:level pin)
-                :on-change #(swap! pins assoc-in [index :level] (-> % .-target .-value))}]
-       [:label {:for "dupes"} "Pins:"]
-       [:input {:type "number"
-                :id "dupes"
-                :value (:dupes pin)
-                :on-change #(swap! pins assoc-in [index :dupes] (-> % .-target .-value))}]
-       [:p (calc-percentage pin)]
-       [:progress {:id "pin" :value (calc-percentage pin) :max "100"}]]))])
+      (let [progress (calc-percentage pin)
+            update (fn [what event] (swap! pins assoc-in [index what] (-> event .-target .-value int)))]
+        ^{:key (:name pin)}
+        [:div.pin-input
+         [:p.pin-name (:name pin)]
+         [:label {:for "level"} "Level:"]
+         [:input {:type "number"
+                  :id "level"
+                  :min 1
+                  :max 20
+                  :value (:level pin)
+                  :on-change (partial update :level)}]
+         [:label {:for "dupes"} "Pins:"]
+         [:input {:type "number"
+                  :id "dupes"
+                  :min 0
+                  :value (:dupes pin)
+                  :on-change (partial update :dupes)}]
+         [:p progress]
+         [:progress {:id "pin" :value progress :max "100"}]])))])
 
 (defn current-xp []
-  (reduce + (map (fn [p] (reduce + (take (- (:level p) 1) (map :xp ((:rarity p) costs))))) @pins))) 
-  
+  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
+
 (defn total-progress []
   [:div.total-progress
    [:span "Progress towards level 20: "]
