@@ -3,7 +3,9 @@
             [reagent.dom :as rdom]
             [goog.string :as gstring]
             [goog.string.format]
-            [alandipert.storage-atom :refer [local-storage]]))
+            [alandipert.storage-atom :refer [local-storage]]
+            [clojure.string :refer [blank?]]
+            [tick.alpha.api :as t]))
 
 (enable-console-print!)
 
@@ -124,6 +126,7 @@
                    {:name "emergency hole" :rarity :epic :level 1 :dupes 0}
                    {:name "windflare" :rarity :epic :level 1 :dupes 0}])
 (defonce pins (local-storage (r/atom all-pins) :pins))
+(defonce start-date (local-storage (r/atom "") :start-date))
 
 (defn- calc-percentage [p]
   (let [costs ((:rarity p) costs)
@@ -131,7 +134,7 @@
         max-pins (reduce + (map :dupes costs))]
     (gstring/format "%.2f" (* 100 (double (/ current-pins max-pins))))))
 
-(defn pin-inputs []
+(defn- pin-inputs []
   [:div.pin-inputs
    (doall
     (for [[index pin] (map-indexed vector @pins)]
@@ -156,18 +159,38 @@
          [:p progress]
          [:progress {:id "pin" :value progress :max "100"}]])))])
 
-(defn current-xp []
+(defn- current-xp []
   (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
 
-(defn total-progress []
-  [:div.total-progress
-   [:span "Progress towards level 20: "]
-   [:span (str (gstring/format "%.2f" (* 100 (double (/ (current-xp) max-xp)))) "%")]])
+(defn- completion-date [progress]
+  (let [start-date-time (t/instant (str @start-date "T00:00:00"))
+        duration (t/duration
+                  {:tick/beginning start-date-time
+                   :tick/end (t/instant)})
+        total-days (int (/ 1 (/ progress (t/days duration))))]
+    (t/format :iso-local-date (t/date (t/+ start-date-time (t/new-duration total-days :days))))))
 
-(defn root []
+(defn- total-progress []
+  (let [progress (double (/ (current-xp) max-xp))]
+    [:div.total-progress
+     [:span (str "Progress towards level 20: " (gstring/format "%.2f" (* 100 progress)) "%")]
+     (if-not (blank? @start-date)
+       [:span (str "Estimated completion date: " (completion-date progress))]
+       [:span ""])]))
+
+(defn- date-picker []
+  [:div.start-date
+   [:label {:for "start-date"} "Start date:"]
+   [:input {:type "date"
+            :id "start-date"
+            :value @start-date
+            :on-change #(reset! start-date (-> % .-target .-value))}]])
+
+(defn- root []
   [:div
    [total-progress]
-   [pin-inputs]])
+   [pin-inputs]
+   [date-picker]])
 
 (defn ^:export run []
   (reset! pins (mapv (comp first second) (group-by :name (concat @pins all-pins))))

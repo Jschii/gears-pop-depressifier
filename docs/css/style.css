@@ -45,6 +45,22 @@ input {
     right: 0;
 }
 
+.total-progress >span {
+    margin: 10px;
+}
+
 .total-progress + .pin-inputs {
     padding-top: 100px;
+}
+
+.start-date {
+    display: flex;
+    width: 80%;
+    margin: auto;
+    justify-content: center;
+}
+
+.start-date >input {
+    margin-left: 10px;
+    width: 180px;
 }
