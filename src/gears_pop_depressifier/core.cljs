@@ -177,7 +177,6 @@
                   :value (:dupes pin)
                   :on-change (partial update :dupes)}]
          [:p progress]
-         [:progress {:id "pin" :value progress :max "100"}]
          [:p.upgradeable (upgradeable pin)]])))])
 
 (defn- current-xp []
