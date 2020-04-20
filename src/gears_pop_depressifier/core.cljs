@@ -146,7 +146,7 @@
            c (get costs (dec level))]
       (if (or (< dupes (:dupes c)) (> level (count costs)))
         (if (pos? coins)
-          (str "Upgradable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp max-xp) "%.2f") " extra total progress")
+          (str "Upgradeable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp max-xp) "%.2f") " extra total progress")
           "")
         (recur (- dupes (:dupes c))
                (inc level)
