@@ -213,5 +213,7 @@
    [date-picker]])
 
 (defn ^:export run []
-  (reset! pins (mapv (comp first second) (group-by :name (concat @pins all-pins))))
+  (reset! pins (vec (sort-by
+                     (juxt #(condp = (:rarity %) :common 0 :rare 1 :epic 2 :legendary 3) :name)
+                     (mapv (comp first second) (group-by :name (concat @pins all-pins))))))
   (rdom/render [root] (js/document.getElementById "app")))
