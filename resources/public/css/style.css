@@ -19,6 +19,12 @@ body {
     padding: 10px;
 }
 
+.upgradeable {
+    font-size: 10px;
+    width: 200px;
+    min-height: 30px;
+}
+
 .pin-name {
     font-weight: bold;
     text-transform: uppercase;

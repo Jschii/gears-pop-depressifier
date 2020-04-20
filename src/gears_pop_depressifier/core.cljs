@@ -128,11 +128,31 @@
 (defonce pins (local-storage (r/atom all-pins) :pins))
 (defonce start-date (local-storage (r/atom "") :start-date))
 
+(defn- format-percentage [percentage formatter]
+  (str (gstring/format formatter (* 100 percentage)) "%"))
+
 (defn- calc-percentage [p]
   (let [costs ((:rarity p) costs)
         current-pins (+ (reduce + (take (dec (:level p)) (map :dupes costs))) (:dupes p) 1)
         max-pins (reduce + (map :dupes costs))]
-    (gstring/format "%.2f" (* 100 (double (/ current-pins max-pins))))))
+    (format-percentage (double (/ current-pins max-pins)) "%.2f")))
+
+(defn- upgradeable [p]
+  (let [costs ((:rarity p) costs)]
+    (loop [dupes (:dupes p)
+           level (:level p)
+           coins 0
+           xp 0
+           c (get costs (dec level))]
+      (if (or (< dupes (:dupes c)) (> level (count costs)))
+        (if (pos? coins)
+          (str "Upgradable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp max-xp) "%.2f") " extra total progress")
+          "")
+        (recur (- dupes (:dupes c))
+               (inc level)
+               (+ coins (:coins c))
+               (+ xp (:xp c))
+               (get costs level))))))
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -157,7 +177,8 @@
                   :value (:dupes pin)
                   :on-change (partial update :dupes)}]
          [:p progress]
-         [:progress {:id "pin" :value progress :max "100"}]])))])
+         [:progress {:id "pin" :value progress :max "100"}]
+         [:p.upgradeable (upgradeable pin)]])))])
 
 (defn- current-xp []
   (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
