@@ -17,6 +17,7 @@ body {
 
 .pin-input {
     padding: 10px;
+    min-width: 200px;
 }
 
 .upgradeable {
@@ -43,9 +44,9 @@ input {
 .total-progress {
     background-color: darkgrey;
     position: fixed;
-    font-size: 40px;
+    font-size: 25px;
     text-align: center;
-    padding-top: 20px;
+    padding: 20px;
     top: 0;
     left: 0;
     right: 0;
@@ -59,14 +60,21 @@ input {
     padding-top: 100px;
 }
 
-.start-date {
+.other-inputs {
     display: flex;
     width: 80%;
     margin: auto;
     justify-content: center;
 }
 
+.other-inputs >span {
+    padding: 10px;
+}
+
 .start-date >input {
-    margin-left: 10px;
-    width: 180px;
+    min-width: 180px;
+}
+
+.coins >input {
+    min-width: 180px;
 }
