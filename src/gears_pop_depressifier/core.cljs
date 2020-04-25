@@ -127,6 +127,7 @@
                    {:name "windflare" :rarity :epic :level 1 :dupes 0}])
 (defonce pins (local-storage (r/atom all-pins) :pins))
 (defonce start-date (local-storage (r/atom "") :start-date))
+(defonce coins (local-storage (r/atom 0) :coins))
 
 (defn- format-percentage [percentage formatter]
   (str (gstring/format formatter (* 100 percentage)) "%"))
@@ -182,6 +183,9 @@
 (defn- current-xp []
   (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
 
+(defn- current-coins-used []
+  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :coins ((:rarity p) costs))))) @pins)))
+
 (defn- completion-date [progress]
   (let [start-date-time (t/instant (str @start-date "T00:00:00"))
         duration (t/duration
@@ -191,26 +195,38 @@
     (t/format :iso-local-date (t/date (t/+ start-date-time (t/new-duration total-days :days))))))
 
 (defn- total-progress []
-  (let [progress (double (/ (current-xp) max-xp))]
+  (let [pin-progress (double (/ (current-xp) max-xp))
+        coin-progress (double (/ (+ @coins (current-coins-used)) 79064010))]
     [:div.total-progress
-     [:span (str "Progress towards level 20: " (gstring/format "%.2f" (* 100 progress)) "%")]
+     [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 pin-progress)) "%")]
+     [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 coin-progress)) "%")]
      (if-not (blank? @start-date)
-       [:span (str "Estimated completion date: " (completion-date progress))]
+       [:span (str "Estimated completion date: " (completion-date (min pin-progress coin-progress)))]
        [:span ""])]))
 
 (defn- date-picker []
-  [:div.start-date
+  [:span.start-date
    [:label {:for "start-date"} "Start date:"]
    [:input {:type "date"
             :id "start-date"
             :value @start-date
             :on-change #(reset! start-date (-> % .-target .-value))}]])
 
+(defn- coin-input []
+  [:span.coins
+   [:label {:for "coins"} "Coins:"]
+   [:input {:type "number"
+            :id "coins"
+            :value @coins
+            :on-change #(reset! coins (-> % .-target .-value int))}]])
+
 (defn- root []
   [:div
    [total-progress]
    [pin-inputs]
-   [date-picker]])
+   [:div.other-inputs
+    [date-picker]
+    [coin-input]]])
 
 (defn ^:export run []
   (reset! pins (vec (sort-by
