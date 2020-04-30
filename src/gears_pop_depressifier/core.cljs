@@ -197,8 +197,9 @@
      [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :coin-progress))) "%")]
      (when-not (blank? @start-date)
        [:div.estimates
-        (for [{:keys [level date]} estimates]
-          [:span (str "Level " level ": " date)])])]))
+        (for [{:keys [level date] :as est} estimates]
+          (when est
+            [:span (str "Level " level ": " date)]))])]))
 
 (defn- pin-inputs []
   [:div.pin-inputs
