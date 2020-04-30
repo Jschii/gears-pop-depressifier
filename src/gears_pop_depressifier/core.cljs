@@ -65,7 +65,7 @@
                (cost. 90 520000 620)
                (cost. 190 830000 740)]})
 (def xps [20 30 50 80 120 180 300 450 700 1100 1700 2600 4100 6400 10000 16000 25000 38000 60000])
-(def max-xp (reduce + xps))
+(def total-xps (take-last 5 (reductions + xps)))
 
 (defonce all-pins [{:name "spotters" :rarity :common :level 1 :dupes 0}
                    {:name "longshot gear" :rarity :common :level 1 :dupes 0}
@@ -147,13 +147,58 @@
            c (get costs (dec level))]
       (if (or (< dupes (:dupes c)) (> level (count costs)))
         (if (pos? coins)
-          (str "Upgradeable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp max-xp) "%.2f") " extra total progress")
+          (str "Upgradeable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp (last total-xps)) "%.2f") " extra total progress")
           "")
         (recur (- dupes (:dupes c))
                (inc level)
                (+ coins (:coins c))
                (+ xp (:xp c))
                (get costs level))))))
+
+(defn- current-xp []
+  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
+
+(defn- current-coins-used []
+  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :coins ((:rarity p) costs))))) @pins)))
+
+(defn- completion-date [progress]
+  (let [start-date-time (t/instant (str @start-date "T00:00:00"))
+        duration (t/duration
+                  {:tick/beginning start-date-time
+                   :tick/end (t/instant)})
+        total-days (int (/ 1 (/ progress (t/days duration))))]
+    (t/format :iso-local-date (t/date (t/+ start-date-time (t/new-duration total-days :days))))))
+
+(defn- next-upgrades [p]
+  (let [costs ((:rarity p) costs)]
+    (for [l (range (-> p :level dec) (count costs))]
+      (let [cost (get costs l)]
+        (assoc cost :cx (/ (:coins cost) (:xp cost)))))))
+
+(defn- last-level-estimates [current-xp current-coins]
+  (let [r (sort-by :cx (mapcat next-upgrades @pins))
+        r2 (reductions (fn [a c] (merge-with + a c)) r)]
+    (for [[index xp] (map-indexed vector total-xps)]
+      (when (< current-xp xp)
+        (let [pin-progress (double (/ current-xp xp))
+              coin-progress (double (/ current-coins (:coins (first (filter #(> (:xp %) (- xp current-xp)) r2)))))]
+          {:level (+ index 16)
+           :pin-progress pin-progress
+           :coin-progress coin-progress
+           :date (when-not (or (blank? @start-date) (not (pos? pin-progress)) (not (pos? coin-progress)))
+                   (completion-date (min pin-progress coin-progress)))})))))
+
+(defn- total-progress []
+  (let [current-xp (current-xp)
+        current-coins (+ @coins (current-coins-used))
+        estimates (last-level-estimates current-xp current-coins)]
+    [:div.total-progress
+     [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :pin-progress))) "%")]
+     [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :coin-progress))) "%")]
+     (when-not (blank? @start-date)
+       [:div.estimates
+        (for [{:keys [level date]} estimates]
+          [:span (str "Level " level ": " date)])])]))
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -179,30 +224,6 @@
                   :on-change (partial update :dupes)}]
          [:p progress]
          [:p.upgradeable (upgradeable pin)]])))])
-
-(defn- current-xp []
-  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
-
-(defn- current-coins-used []
-  (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :coins ((:rarity p) costs))))) @pins)))
-
-(defn- completion-date [progress]
-  (let [start-date-time (t/instant (str @start-date "T00:00:00"))
-        duration (t/duration
-                  {:tick/beginning start-date-time
-                   :tick/end (t/instant)})
-        total-days (int (/ 1 (/ progress (t/days duration))))]
-    (t/format :iso-local-date (t/date (t/+ start-date-time (t/new-duration total-days :days))))))
-
-(defn- total-progress []
-  (let [pin-progress (double (/ (current-xp) max-xp))
-        coin-progress (double (/ (+ @coins (current-coins-used)) 79064010))]
-    [:div.total-progress
-     [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 pin-progress)) "%")]
-     [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 coin-progress)) "%")]
-     (if-not (blank? @start-date)
-       [:span (str "Estimated completion date: " (completion-date (min pin-progress coin-progress)))]
-       [:span ""])]))
 
 (defn- date-picker []
   [:span.start-date
