@@ -5,6 +5,7 @@
             [goog.string.format]
             [alandipert.storage-atom :refer [local-storage]]
             [clojure.string :refer [blank?]]
+            [clojure.set :refer [rename-keys]]
             [tick.alpha.api :as t]))
 
 (enable-console-print!)
@@ -66,6 +67,10 @@
                (cost. 190 830000 740)]})
 (def xps [20 30 50 80 120 180 300 450 700 1100 1700 2600 4100 6400 10000 16000 25000 38000 60000])
 (def total-xps (take-last 5 (reductions + xps)))
+(defn- total-pins [rarity level]
+  (if (< level 2)
+    level
+    (inc (nth (reductions + (map :dupes (rarity costs))) (- level 2)))))
 
 (defonce all-pins [{:name "spotters" :rarity :common :level 1 :dupes 0}
                    {:name "longshot gear" :rarity :common :level 1 :dupes 0}
@@ -132,9 +137,9 @@
 (defn- format-percentage [percentage formatter]
   (str (gstring/format formatter (* 100 percentage)) "%"))
 
-(defn- calc-percentage [p]
-  (let [costs ((:rarity p) costs)
-        current-pins (+ (reduce + (take (dec (:level p)) (map :dupes costs))) (:dupes p) 1)
+(defn- calc-percentage [{:keys [rarity level dupes]}]
+  (let [costs (rarity costs)
+        current-pins (+ (total-pins rarity level) dupes)
         max-pins (reduce + (map :dupes costs))]
     (format-percentage (double (/ current-pins max-pins)) "%.2f")))
 
@@ -171,20 +176,41 @@
 
 (defn- next-upgrades [p]
   (let [costs ((:rarity p) costs)]
-    (for [l (range (-> p :level dec) (count costs))]
+    (for [l (range (max (-> p :level dec) 1) (count costs))]
       (let [cost (get costs l)]
-        (assoc cost :cx (/ (:coins cost) (:xp cost)))))))
+        (-> cost
+            (assoc :cx (/ (:coins cost) (:xp cost)))
+            (rename-keys {:dupes (keyword (str (-> p :rarity name) "-dupes"))}))))))
+
+(defn- current-pins [rarity]
+  (reduce + (map (fn [{:keys [rarity level dupes]}]
+                   (+ (total-pins rarity level) dupes))
+                 (filter #(= rarity (:rarity %)) @pins))))
 
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
-        r2 (reductions (fn [a c] (merge-with + a c)) r)]
+        r2 (reductions (fn [a c] (merge-with + a c)) r)
+        current-commons (current-pins :common)
+        current-rares (current-pins :rare)
+        current-epics (current-pins :epic)
+        current-legendary (current-pins :legendary)
+        _ (println current-commons current-rares)
+        required (fn [what xp-required]
+                   (what (first (filter #(> (:xp %) xp-required) r2))))]
     (for [[index xp] (map-indexed vector total-xps)]
       (when (< current-xp xp)
-        (let [pin-progress (double (/ current-xp xp))
-              coin-progress (double (/ current-coins (:coins (first (filter #(> (:xp %) (- xp current-xp)) r2)))))]
+        (let [xp-required (- xp current-xp)
+              xp-progress (double (/ current-xp xp))
+              pin-progress (/ (+ (double (/ current-commons (required :common-dupes xp-required)))
+                                 (double (/ current-rares (required :rare-dupes xp-required)))
+                                 (double (/ current-epics (required :epic-dupes xp-required)))
+                                 (double (/ current-legendary (required :legendary-dupes xp-required))))
+                              4)
+              coin-progress (double (/ current-coins (required :coins xp-required)))]
           {:level (+ index 16)
-           :pin-progress pin-progress
+           :xp-progress xp-progress
            :coin-progress coin-progress
+           :pin-progress pin-progress
            :date (when-not (or (blank? @start-date) (not (pos? pin-progress)) (not (pos? coin-progress)))
                    (completion-date (min pin-progress coin-progress)))})))))
 
@@ -195,6 +221,7 @@
     [:div.total-progress
      [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :pin-progress))) "%")]
      [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :coin-progress))) "%")]
+     [:span (str "XP progress: " (gstring/format "%.2f" (* 100 (-> estimates last :xp-progress))) "%")]
      (when-not (blank? @start-date)
        [:div.estimates
         (for [{:keys [level date] :as est} estimates]
