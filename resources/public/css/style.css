@@ -6,70 +6,111 @@ body {
     text-shadow: 5px 5px 10px black;
 }
 
+.container {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-around;
+    align-items: flex-start;
+}
+
+.container > * {
+    padding: 10px;
+}
+
 .pin-inputs {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-evenly;
-    width: 80%;
-    margin: auto;
+    flex-flow: row wrap;
+    justify-content: flex-start;
+    width: 60%;
 }
 
 .pin-input {
     padding: 10px;
-    min-width: 200px;
 }
 
 .upgradeable {
     font-size: 10px;
-    width: 200px;
-    min-height: 30px;
 }
 
 .pin-name {
+    display: inline-block;
     font-weight: bold;
     text-transform: uppercase;
+    min-width: 250px;
+}
+
+.pin-progress {
+    display: inline-block;
+    text-align: right;
+    margin-right: 20px;
+    min-width: 100px;
 }
 
 input {
-    display: block;
     border: 2px solid #8842d5;
     border-radius: 5px;
     font-family: inherit;
     font-size: 20px;
     width: 80px;
     text-align: right;
+    margin-left: 10px;
+    margin-right: 20px;
 }
 
 .total-progress {
-    background-color: darkgrey;
     position: fixed;
+    background-color: darkgrey;
     font-size: 25px;
-    text-align: center;
     padding: 20px;
+    text-align: center;
     top: 0;
     left: 0;
     right: 0;
+}
+
+.container::before {
+    position: fixed;
+    content: "DEPRESSIFIER";
+    text-align: center;
+    font-size: 50px;
+    opacity: 0.10;
+    letter-spacing: 100px;
+    color: lightgrey;
+    z-index:1;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.total-progress + .other-inputs {
+    padding-top: 100px;
 }
 
 .total-progress >span {
     margin: 10px;
 }
 
-.estimates >span {
-    font-size: 20px;
-    margin: 10px;
+.estimates {
+    width: 20%;
 }
 
-.total-progress + .pin-inputs {
-    padding-top: 100px;
+.path-header {
+    font-size: 20px;
+}
+
+.path-row {
+    display: inline-block;
+    font-size: 10px;
+    margin-right: 10px;
+    font-weight: bold;
+    min-width: 150px;
 }
 
 .other-inputs {
     display: flex;
-    width: 80%;
     margin: auto;
     justify-content: center;
+    width: 80%;
 }
 
 .other-inputs >span {

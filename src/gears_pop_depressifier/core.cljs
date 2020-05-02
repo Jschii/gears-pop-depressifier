@@ -4,7 +4,7 @@
             [goog.string :as gstring]
             [goog.string.format]
             [alandipert.storage-atom :refer [local-storage]]
-            [clojure.string :refer [blank?]]
+            [clojure.string :refer [blank? upper-case]]
             [clojure.set :refer [rename-keys]]
             [tick.alpha.api :as t]))
 
@@ -179,7 +179,7 @@
     (for [l (range (max (-> p :level dec) 1) (count costs))]
       (let [cost (get costs l)]
         (-> cost
-            (assoc :cx (/ (:coins cost) (:xp cost)))
+            (assoc :cx (/ (:coins cost) (:xp cost)) :pin-name (:name p) :pin-level (+ l 2))
             (rename-keys {:dupes (keyword (str (-> p :rarity name) "-dupes"))}))))))
 
 (defn- current-pins [rarity]
@@ -189,44 +189,52 @@
 
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
-        r2 (reductions (fn [a c] (merge-with + a c)) r)
+        requirements (reductions (fn [a c] (merge-with + a c)) r)
         current-commons (current-pins :common)
         current-rares (current-pins :rare)
         current-epics (current-pins :epic)
         current-legendary (current-pins :legendary)
-        _ (println current-commons current-rares)
-        required (fn [what xp-required]
-                   (what (first (filter #(> (:xp %) xp-required) r2))))]
+        required (fn [xp-required]
+                   (first (filter
+                           (fn [[_ {xp :xp}]]
+                             (> xp xp-required))
+                           (map-indexed vector requirements))))]
+
     (for [[index xp] (map-indexed vector total-xps)]
       (when (< current-xp xp)
         (let [xp-required (- xp current-xp)
               xp-progress (double (/ current-xp xp))
-              pin-progress (/ (+ (double (/ current-commons (required :common-dupes xp-required)))
-                                 (double (/ current-rares (required :rare-dupes xp-required)))
-                                 (double (/ current-epics (required :epic-dupes xp-required)))
-                                 (double (/ current-legendary (required :legendary-dupes xp-required))))
+              level-req (required xp-required)
+              pin-progress (/ (+ (double (/ current-commons (-> level-req second :common-dupes)))
+                                 (double (/ current-rares (-> level-req second :rare-dupes)))
+                                 (double (/ current-epics (-> level-req second :epic-dupes)))
+                                 (double (/ current-legendary (-> level-req second :legendary-dupes))))
                               4)
-              coin-progress (double (/ current-coins (required :coins xp-required)))]
+              coin-progress (double (/ current-coins (-> level-req second :coins)))]
           {:level (+ index 16)
            :xp-progress xp-progress
            :coin-progress coin-progress
            :pin-progress pin-progress
+           :path (take (first level-req) r)
            :date (when-not (or (blank? @start-date) (not (pos? pin-progress)) (not (pos? coin-progress)))
                    (completion-date (min pin-progress coin-progress)))})))))
 
-(defn- total-progress []
-  (let [current-xp (current-xp)
-        current-coins (+ @coins (current-coins-used))
-        estimates (last-level-estimates current-xp current-coins)]
-    [:div.total-progress
-     [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :pin-progress))) "%")]
-     [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :coin-progress))) "%")]
-     [:span (str "XP progress: " (gstring/format "%.2f" (* 100 (-> estimates last :xp-progress))) "%")]
-     (when-not (blank? @start-date)
-       [:div.estimates
-        (for [{:keys [level date] :as est} estimates]
-          (when est
-            [:span (str "Level " level ": " date)]))])]))
+(defn- total-progress [estimates]
+  [:div.total-progress
+   [:span (str "Pin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :pin-progress))) "%")]
+   [:span (str "Coin progress: " (gstring/format "%.2f" (* 100 (-> estimates last :coin-progress))) "%")]
+   [:span (str "XP progress: " (gstring/format "%.2f" (* 100 (-> estimates last :xp-progress))) "%")]])
+
+(defn- path [estimates]
+  [:div.estimates
+   (when-not (blank? @start-date)
+     (for [{:keys [level date path] :as est} estimates :when est]
+       (let [foo (map (fn [[k v]]
+                        [k (apply max (map :pin-level v))]) (group-by :pin-name path))]
+         [:span
+          [:p.path-header (str "Level " level ": " date)]
+          (for [[pin level] foo]
+            [:span.path-row (str (upper-case pin) " to level " level)])])))])
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -236,7 +244,7 @@
             update (fn [what event] (swap! pins assoc-in [index what] (-> event .-target .-value int)))]
         ^{:key (:name pin)}
         [:div.pin-input
-         [:p.pin-name (:name pin)]
+         [:span.pin-name (:name pin)]
          [:label {:for "level"} "Level:"]
          [:input {:type "number"
                   :id "level"
@@ -250,8 +258,8 @@
                   :min 0
                   :value (:dupes pin)
                   :on-change (partial update :dupes)}]
-         [:p progress]
-         [:p.upgradeable (upgradeable pin)]])))])
+         [:span.pin-progress progress]
+         [:span.upgradeable (upgradeable pin)]])))])
 
 (defn- date-picker []
   [:span.start-date
@@ -270,12 +278,16 @@
             :on-change #(reset! coins (-> % .-target .-value int))}]])
 
 (defn- root []
-  [:div
-   [total-progress]
-   [pin-inputs]
-   [:div.other-inputs
-    [date-picker]
-    [coin-input]]])
+  (let [current-xp (current-xp)
+        current-coins (+ @coins (current-coins-used))
+        estimates (last-level-estimates current-xp current-coins)]
+    [:div.container
+     [total-progress estimates]
+     [:div.other-inputs
+      [date-picker]
+      [coin-input]]
+     [pin-inputs]
+     [path estimates]]))
 
 (defn ^:export run []
   (reset! pins (vec (sort-by
