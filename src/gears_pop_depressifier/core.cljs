@@ -72,65 +72,67 @@
     level
     (inc (nth (reductions + (map :dupes (rarity costs))) (- level 2)))))
 
-(defonce all-pins [{:name "spotters" :rarity :common :level 1 :dupes 0}
-                   {:name "longshot gear" :rarity :common :level 1 :dupes 0}
-                   {:name "scion" :rarity :common :level 1 :dupes 0}
-                   {:name "decoy" :rarity :common :level 1 :dupes 0}
-                   {:name "stun tracker" :rarity :common :level 1 :dupes 0}
-                   {:name "frag grenade" :rarity :common :level 1 :dupes 0}
-                   {:name "locust drone" :rarity :common :level 1 :dupes 0}
-                   {:name "shepherds" :rarity :common :level 1 :dupes 0}
-                   {:name "ink grenade" :rarity :common :level 1 :dupes 0}
-                   {:name "ticker" :rarity :common :level 1 :dupes 0}
-                   {:name "onyx guards" :rarity :common :level 1 :dupes 0}
-                   {:name "shock barrier" :rarity :common :level 1 :dupes 0}
-                   {:name "stun grenade" :rarity :common :level 1 :dupes 0}
-                   {:name "savage granadier" :rarity :common :level 1 :dupes 0}
-                   {:name "juvies" :rarity :rare :level 1 :dupes 0}
-                   {:name "sentry" :rarity :rare :level 1 :dupes 0}
-                   {:name "power genertor" :rarity :rare :level 1 :dupes 0}
-                   {:name "clayton carmine" :rarity :rare :level 1 :dupes 0}
-                   {:name "augustus cole" :rarity :rare :level 1 :dupes 0}
-                   {:name "boomer" :rarity :rare :level 1 :dupes 0}
-                   {:name "wretches" :rarity :rare :level 1 :dupes 0}
-                   {:name "bernadette mataki" :rarity :rare :level 1 :dupes 0}
-                   {:name "drone division" :rarity :rare :level 1 :dupes 0}
-                   {:name "lancer crew" :rarity :rare :level 1 :dupes 0}
-                   {:name "gnasher gang" :rarity :rare :level 1 :dupes 0}
-                   {:name "del walker" :rarity :rare :level 1 :dupes 0}
-                   {:name "deadeye" :rarity :rare :level 1 :dupes 0}
-                   {:name "sam byrne" :rarity :epic :level 1 :dupes 0}
-                   {:name "marcus fenix" :rarity :epic :level 1 :dupes 0}
-                   {:name "dominic santiago" :rarity :epic :level 1 :dupes 0}
-                   {:name "grinder" :rarity :epic :level 1 :dupes 0}
-                   {:name "hammer of dawn" :rarity :epic :level 1 :dupes 0}
-                   {:name "drop pod" :rarity :epic :level 1 :dupes 0}
-                   {:name "fahz chutani" :rarity :epic :level 1 :dupes 0}
-                   {:name "dr-1" :rarity :epic :level 1 :dupes 0}
-                   {:name "damon baird" :rarity :epic :level 1 :dupes 0}
-                   {:name "butcher" :rarity :epic :level 1 :dupes 0}
-                   {:name "jack" :rarity :epic :level 1 :dupes 0}
-                   {:name "kait diaz" :rarity :epic :level 1 :dupes 0}
-                   {:name "anya stroud" :rarity :legendary :level 1 :dupes 0}
-                   {:name "victor hoffman" :rarity :legendary :level 1 :dupes 0}
-                   {:name "mina jinn" :rarity :legendary :level 1 :dupes 0}
-                   {:name "myrrah" :rarity :legendary :level 1 :dupes 0}
-                   {:name "old man marcus" :rarity :legendary :level 1 :dupes 0}
-                   {:name "skorge" :rarity :legendary :level 1 :dupes 0}
-                   {:name "general raam" :rarity :legendary :level 1 :dupes 0}
-                   {:name "winter kait" :rarity :legendary :level 1 :dupes 0}
-                   {:name "lancer gear" :rarity :common :level 1 :dupes 0}
-                   {:name "shock grenade" :rarity :common :level 1 :dupes 0}
-                   {:name "nemacysts" :rarity :common :level 1 :dupes 0}
-                   {:name "snub soldiers" :rarity :common :level 1 :dupes 0}
-                   {:name "kantus" :rarity :common :level 1 :dupes 0}
-                   {:name "sentinel" :rarity :rare :level 1 :dupes 0}
-                   {:name "reyna diaz" :rarity :epic :level 1 :dupes 0}
-                   {:name "jd fenix" :rarity :epic :level 1 :dupes 0}
-                   {:name "seeder" :rarity :epic :level 1 :dupes 0}
-                   {:name "emergency hole" :rarity :epic :level 1 :dupes 0}
-                   {:name "windflare" :rarity :epic :level 1 :dupes 0}])
-(defonce pins (local-storage (r/atom all-pins) :pins))
+(defonce all-pins [{:name "spotters" :rarity :common}
+                   {:name "longshot gear" :rarity :common}
+                   {:name "scion" :rarity :common}
+                   {:name "decoy" :rarity :common}
+                   {:name "stun tracker" :rarity :common}
+                   {:name "frag grenade" :rarity :common}
+                   {:name "locust drone" :rarity :common}
+                   {:name "shepherds" :rarity :common}
+                   {:name "ink grenade" :rarity :common}
+                   {:name "ticker" :rarity :common}
+                   {:name "onyx guards" :rarity :common}
+                   {:name "shock barrier" :rarity :common}
+                   {:name "stun grenade" :rarity :common}
+                   {:name "savage granadier" :rarity :common}
+                   {:name "juvies" :rarity :rare}
+                   {:name "sentry" :rarity :rare}
+                   {:name "power genertor" :rarity :rare}
+                   {:name "clayton carmine" :rarity :rare}
+                   {:name "augustus cole" :rarity :rare}
+                   {:name "boomer" :rarity :rare}
+                   {:name "wretches" :rarity :rare}
+                   {:name "bernadette mataki" :rarity :rare}
+                   {:name "drone division" :rarity :rare}
+                   {:name "lancer crew" :rarity :rare}
+                   {:name "gnasher gang" :rarity :rare}
+                   {:name "del walker" :rarity :rare}
+                   {:name "deadeye" :rarity :rare}
+                   {:name "sam byrne" :rarity :epic}
+                   {:name "marcus fenix" :rarity :epic}
+                   {:name "dominic santiago" :rarity :epic}
+                   {:name "grinder" :rarity :epic}
+                   {:name "hammer of dawn" :rarity :epic}
+                   {:name "drop pod" :rarity :epic}
+                   {:name "fahz chutani" :rarity :epic}
+                   {:name "dr-1" :rarity :epic}
+                   {:name "damon baird" :rarity :epic}
+                   {:name "butcher" :rarity :epic}
+                   {:name "jack" :rarity :epic}
+                   {:name "kait diaz" :rarity :epic}
+                   {:name "anya stroud" :rarity :legendary}
+                   {:name "victor hoffman" :rarity :legendary}
+                   {:name "mina jinn" :rarity :legendary}
+                   {:name "myrrah" :rarity :legendary}
+                   {:name "old man marcus" :rarity :legendary}
+                   {:name "skorge" :rarity :legendary}
+                   {:name "general raam" :rarity :legendary}
+                   {:name "winter kait" :rarity :legendary}
+                   {:name "lancer gear" :rarity :common}
+                   {:name "shock grenade" :rarity :common}
+                   {:name "nemacysts" :rarity :common}
+                   {:name "snub soldiers" :rarity :common}
+                   {:name "kantus" :rarity :common}
+                   {:name "sentinel" :rarity :rare}
+                   {:name "reyna diaz" :rarity :epic}
+                   {:name "jd fenix" :rarity :epic}
+                   {:name "seeder" :rarity :epic}
+                   {:name "emergency hole" :rarity :epic}
+                   {:name "windflare" :rarity :epic}])
+(defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
+                         (assoc pin :id index :level 0 :dupes 0)))
+(defonce pins (local-storage (r/atom pins-with-ids) :pins))
 (defonce start-date (local-storage (r/atom "") :start-date))
 (defonce coins (local-storage (r/atom 0) :coins))
 
@@ -178,44 +180,57 @@
   (let [costs ((:rarity p) costs)]
     (for [l (range (max (-> p :level dec) 1) (count costs))]
       (let [cost (get costs l)]
-        (-> cost
-            (assoc :cx (/ (:coins cost) (:xp cost)) :pin-name (:name p) :pin-level (+ l 2))
-            (rename-keys {:dupes (keyword (str (-> p :rarity name) "-dupes"))}))))))
+        (assoc cost :cx (/ (:coins cost) (:xp cost)) :pin-name (:name p) :pin-level (+ l 2) :rarity (:rarity p) :id (:id p))))))
 
-(defn- current-pins [rarity]
-  (reduce + (map (fn [{:keys [rarity level dupes]}]
-                   (+ (total-pins rarity level) dupes))
-                 (filter #(= rarity (:rarity %)) @pins))))
+(defn average [numbers]
+  (if (empty? numbers)
+    0
+    (/ (reduce + numbers) (count numbers))))
+
+(defn- owned-and-required [rarity-list]
+  (reduce (fn [[f1 s1] [f2 s2]] [(+ f1 f2) (+ s1 s2)]) rarity-list))
+
+(defn- rarity-percentage [rarity-list]
+  (let [[owned required] (owned-and-required rarity-list)]
+    (if (zero? required)
+      1
+      (/ owned required))))
+
+(defn- missing [lst]
+  (let [[owned required] (owned-and-required lst)]
+    (- required owned)))
 
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
-        requirements (reductions (fn [a c] (merge-with + a c)) r)
-        current-commons (current-pins :common)
-        current-rares (current-pins :rare)
-        current-epics (current-pins :epic)
-        current-legendary (current-pins :legendary)
-        required (fn [xp-required]
-                   (first (filter
-                           (fn [[_ {xp :xp}]]
-                             (> xp xp-required))
-                           (map-indexed vector requirements))))]
+        requirements (reductions + (map :xp r))
+        required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))]
 
     (for [[index xp] (map-indexed vector total-xps)]
       (when (< current-xp xp)
         (let [xp-required (- xp current-xp)
               xp-progress (double (/ current-xp xp))
-              level-req (required xp-required)
-              pin-progress (/ (+ (double (/ current-commons (-> level-req second :common-dupes)))
-                                 (double (/ current-rares (-> level-req second :rare-dupes)))
-                                 (double (/ current-epics (-> level-req second :epic-dupes)))
-                                 (double (/ current-legendary (-> level-req second :legendary-dupes))))
-                              4)
-              coin-progress (double (/ current-coins (-> level-req second :coins)))]
+              needed-for-level (take (required xp-required) r)
+              rarity-groups (into {} (map (fn [[rarity ps]]
+                                 {rarity (keep (fn [p]
+                                                 (let [owned (->> @pins (filter #(= (:id %) (:id p))) first :dupes)]
+                                                   (when (< owned (:dupes p))
+                                                     [owned (:dupes p)]))) ps)}) (group-by :rarity needed-for-level)))
+              pin-progress (average [(rarity-percentage (:common rarity-groups))
+                                     (rarity-percentage (:rare rarity-groups))
+                                     (rarity-percentage (:epic rarity-groups))
+                                     (rarity-percentage (:legendary rarity-groups))])
+              coin-progress (double (/ current-coins (reduce + (map :coins needed-for-level))))
+              path needed-for-level]
           {:level (+ index 16)
            :xp-progress xp-progress
            :coin-progress coin-progress
            :pin-progress pin-progress
-           :path (take (first level-req) r)
+           :path path
+           :coins-required (- (reduce + (map :coins needed-for-level)) @coins)
+           :commons-required (missing (:common rarity-groups))
+           :rares-required (missing (:rare rarity-groups))
+           :epics-required (missing (:epic rarity-groups))
+           :legendaries-required (missing (:legendary rarity-groups))
            :date (when-not (or (blank? @start-date) (not (pos? pin-progress)) (not (pos? coin-progress)))
                    (completion-date (min pin-progress coin-progress)))})))))
 
@@ -228,13 +243,18 @@
 (defn- path [estimates]
   [:div.estimates
    (when-not (blank? @start-date)
-     (for [{:keys [level date path] :as est} estimates :when est]
-       (let [foo (map (fn [[k v]]
-                        [k (apply max (map :pin-level v))]) (group-by :pin-name path))]
-         [:span
+     (for [{:keys [level date path coins-required commons-required rares-required epics-required legendaries-required] :as est} estimates :when est]
+       (let [pin-and-level (map (fn [[k v]]
+                                  [k (apply max (map :pin-level v))]) (group-by :pin-name path))]
+         ^{:key level} [:span
           [:p.path-header (str "Level " level ": " date)]
-          (for [[pin level] foo]
-            [:span.path-row (str (upper-case pin) " to level " level)])])))])
+          [:p.path-row (str coins-required " coins missing")]
+          [:p.path-row (str commons-required " commons missing")]
+          [:p.path-row (str rares-required " rares missing")]
+          [:p.path-row (str epics-required " epics missing")]
+          [:p.path-row (str legendaries-required " legendaries missing")]
+          (for [[pin level] pin-and-level]
+            ^{:key (str pin level)} [:span.path-row (str (upper-case pin) " to level " level)])])))])
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -292,5 +312,5 @@
 (defn ^:export run []
   (reset! pins (vec (sort-by
                      (juxt #(condp = (:rarity %) :common 0 :rare 1 :epic 2 :legendary 3) :name)
-                     (mapv (comp first second) (group-by :name (concat @pins all-pins))))))
+                     (mapv (comp #(apply merge %) second) (group-by :id (concat pins-with-ids @pins))))))
   (rdom/render [root] (js/document.getElementById "app")))
