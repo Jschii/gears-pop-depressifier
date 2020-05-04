@@ -132,10 +132,11 @@
                    {:name "jd fenix" :rarity :epic}
                    {:name "seeder" :rarity :epic}
                    {:name "emergency hole" :rarity :epic}
-                   {:name "windflare" :rarity :epic}])
+                   {:name "windflare" :rarity :epic}
+                   {:name "gabe diaz" :rarity :legendary}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
-(defonce pins (local-storage (r/atom pins-with-ids) :pins))
+(defonce pins (local-storage (r/atom pins-with-ids) :pins-v2))
 (defonce start-date (local-storage (r/atom "") :start-date))
 (defonce coins (local-storage (r/atom 0) :coins))
 (defonce target-level (r/atom 20))
