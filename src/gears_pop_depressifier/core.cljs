@@ -88,7 +88,7 @@
                    {:name "onyx guards" :rarity :common}
                    {:name "shock barrier" :rarity :common}
                    {:name "stun grenade" :rarity :common}
-                   {:name "savage granadier" :rarity :common}
+                   {:name "savage grenadier" :rarity :common}
                    {:name "juvies" :rarity :rare}
                    {:name "sentry" :rarity :rare}
                    {:name "power genertor" :rarity :rare}
