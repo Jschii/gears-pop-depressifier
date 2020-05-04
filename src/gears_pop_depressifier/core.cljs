@@ -299,23 +299,25 @@
       (let [progress (calc-percentage pin)
             update (fn [what event] (swap! pins assoc-in [index what] (-> event .-target .-value int)))]
         ^{:key (:name pin)}
-        [:div.pin-input
-         [:span.pin-name (:name pin)]
-         [:label {:for "level"} "Level:"]
-         [:input {:type "number"
-                  :id "level"
-                  :min 0
-                  :max (inc (count ((:rarity pin) costs)))
-                  :value (:level pin)
-                  :on-change (partial update :level)}]
-         [:label {:for "dupes"} "Pins:"]
-         [:input {:type "number"
-                  :id "dupes"
-                  :min 0
-                  :value (:dupes pin)
-                  :on-change (partial update :dupes)}]
-         [:span.pin-progress progress]
-         [:span.upgradeable (upgradeable pin)]])))])
+        [:div
+         [:div.pin-input
+          [:span.pin-name (:name pin)]
+          [:label {:for "level"} "Level:"]
+          [:input {:type "number"
+                   :id "level"
+                   :min 0
+                   :max (inc (count ((:rarity pin) costs)))
+                   :value (:level pin)
+                   :on-change (partial update :level)}]
+          [:label {:for "dupes"} "Pins:"]
+          [:input {:type "number"
+                   :id "dupes"
+                   :min 0
+                   :value (:dupes pin)
+                   :on-change (partial update :dupes)}]]
+         [:div.pin-progress
+          [:span.pin-progress progress]
+          [:span.upgradeable (upgradeable pin)]]])))])
 
 (defn- date-picker []
   [:span.start-date
