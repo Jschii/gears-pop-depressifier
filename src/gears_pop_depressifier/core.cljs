@@ -70,7 +70,10 @@
 (defn- total-pins [rarity level]
   (if (< level 2)
     level
-    (inc (nth (reductions + (map :dupes (rarity costs))) (- level 2)))))
+    (let [dupes (map :dupes (rarity costs))]
+      (if (> (dec level) (count dupes))
+        0
+        (inc (nth (reductions + dupes) (- level 2)))))))
 
 (defonce all-pins [{:name "spotters" :rarity :common}
                    {:name "longshot gear" :rarity :common}
@@ -143,7 +146,7 @@
 (defn- calc-percentage [{:keys [rarity level dupes]}]
   (let [costs (rarity costs)
         current-pins (+ (total-pins rarity level) dupes)
-        max-pins (reduce + (map :dupes costs))]
+        max-pins (inc (reduce + (map :dupes costs)))]
     (format-percentage (double (/ current-pins max-pins)) "%.2f")))
 
 (defn- upgradeable [p]
@@ -300,8 +303,8 @@
          [:label {:for "level"} "Level:"]
          [:input {:type "number"
                   :id "level"
-                  :min 1
-                  :max 20
+                  :min 0
+                  :max (inc (count ((:rarity pin) costs)))
                   :value (:level pin)
                   :on-change (partial update :level)}]
          [:label {:for "dupes"} "Pins:"]
@@ -344,5 +347,5 @@
 (defn ^:export run []
   (reset! pins (vec (sort-by
                      (juxt #(condp = (:rarity %) :common 0 :rare 1 :epic 2 :legendary 3) :name)
-                     (mapv (comp #(apply merge %) second) (group-by :id (concat pins-with-ids @pins))))))
+                     (mapv (comp first second) (group-by :id (concat @pins pins-with-ids))))))
   (rdom/render [root] (js/document.getElementById "app")))
