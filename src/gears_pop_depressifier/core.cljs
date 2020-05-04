@@ -170,11 +170,12 @@
   (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :coins ((:rarity p) costs))))) @pins)))
 
 (defn- days-played []
-  (let [start-date-time (t/instant (str @start-date "T00:00:00"))
-        duration (t/duration
-                  {:tick/beginning start-date-time
-                   :tick/end (t/instant)})]
-    (t/days duration)))
+  (when-not (blank? @start-date)
+    (let [start-date-time (t/instant (str @start-date "T00:00:00"))
+          duration (t/duration
+                    {:tick/beginning start-date-time
+                     :tick/end (t/instant)})]
+      (t/days duration))))
 
 (defn- completion-date [days]
   (t/format :iso-local-date (t/date (t/+ (t/instant) (t/new-duration days :days)))))
@@ -197,12 +198,23 @@
                    (+ (total-pins rarity level) dupes))
                  (filter #(= rarity (:rarity %)) @pins))))
 
+(defn- per-day [current-coins]
+  (if-let [days-played (days-played)]
+    [(/ (current-pins :common) days-played)
+     (/ (current-pins :rare) days-played)
+     (/ (current-pins :epic) days-played)
+     (/ (current-pins :legendary) days-played)
+     (/ current-coins days-played)]
+    [nil nil nil nil nil]))
+
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
         requirements (reductions + (map :xp r))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         xp (nth total-xps (- @target-level 2))
-        xp-progress (double (/ current-xp (last total-xps)))]
+        xp-progress (double (/ current-xp (last total-xps)))
+        days-played (days-played)
+        [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] (per-day current-coins)]
     (if (< current-xp xp)
       (let [xp-required (- xp current-xp)
             needed-for-level (take (required xp-required) r)
@@ -211,12 +223,6 @@
                                                           (let [owned (->> @pins (filter #(= (:id %) (:id p))) first :dupes)]
                                                             (when (< owned (:dupes p))
                                                               [owned (:dupes p)]))) ps)}) (group-by :rarity needed-for-level)))
-            days-played (days-played)
-            commons-per-day (/ (current-pins :common) days-played)
-            rares-per-day (/ (current-pins :rare) days-played)
-            epics-per-day (/ (current-pins :epic) days-played)
-            legendaries-per-day (/ (current-pins :legendary) days-played)
-            coins-per-day (/ current-coins days-played)
             commons-missing (missing (:common rarity-groups))
             rares-missing (missing (:rare rarity-groups))
             epics-missing (missing (:epic rarity-groups))
@@ -240,9 +246,14 @@
          :epics-per-day epics-per-day
          :legendaries-per-day legendaries-per-day
          :coins-per-day coins-per-day
-         :date (when-not (or (blank? @start-date) (not (pos? progress)))
+         :date (when (pos? progress)
                  (completion-date progress))})
-      {:xp-progress xp-progress})))
+      {:xp-progress xp-progress
+       :commons-per-day commons-per-day
+       :rares-per-day rares-per-day
+       :epics-per-day epics-per-day
+       :legendaries-per-day legendaries-per-day
+       :coins-per-day coins-per-day})))
 
 (defn- total-progress [{xp :xp-progress commons :commons-per-day rares :rares-per-day epics :epics-per-day legendaries :legendaries-per-day coins :coins-per-day}]
   [:div.total-progress
