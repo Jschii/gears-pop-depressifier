@@ -131,7 +131,7 @@
                    {:name "reyna diaz" :rarity :epic}
                    {:name "jd fenix" :rarity :epic}
                    {:name "seeder" :rarity :epic}
-                   {:name "emergency hole" :rarity :epic}
+                   {:name "emergence hole" :rarity :epic}
                    {:name "windflare" :rarity :epic}
                    {:name "gabe diaz" :rarity :legendary}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
@@ -357,8 +357,14 @@
      [pin-inputs]
      [path estimates]]))
 
+(defn- find-pin [id]
+  (first (filter #(= (:id %) id) @pins)))
+
 (defn ^:export run []
   (reset! pins (vec (sort-by
                      (juxt #(condp = (:rarity %) :common 0 :rare 1 :epic 2 :legendary 3) :name)
-                     (mapv (comp first second) (group-by :id (concat @pins pins-with-ids))))))
+                     (map (fn [p]
+                            (-> p
+                                (assoc :level (:level (find-pin (:id p))))
+                                (assoc :dupes (:dupes (find-pin (:id p)))))) pins-with-ids))))
   (rdom/render [root] (js/document.getElementById "app")))
