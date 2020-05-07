@@ -193,10 +193,6 @@
 (defn- owned-and-required [rarity-list]
   (reduce (fn [[f1 s1] [f2 s2]] [(+ f1 f2) (+ s1 s2)]) rarity-list))
 
-(defn- missing [lst]
-  (let [[owned required] (owned-and-required lst)]
-    (- required owned)))
-
 (defn- current-pins [rarity]
   (reduce + (map (fn [{:keys [rarity level dupes]}]
                    (+ (total-pins rarity level) dupes))
@@ -211,6 +207,9 @@
      (/ current-coins days-played)]
     [nil nil nil nil nil]))
 
+(defn- missing [r]
+  (reduce + (map :missing r)))
+
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
         requirements (reductions + (map :xp r))
@@ -223,10 +222,13 @@
       (let [xp-required (- xp current-xp)
             needed-for-level (take (required xp-required) r)
             rarity-groups (into {} (map (fn [[rarity ps]]
-                                          {rarity (keep (fn [p]
-                                                          (let [owned (->> @pins (filter #(= (:id %) (:id p))) first :dupes)]
-                                                            (when (< owned (:dupes p))
-                                                              [owned (:dupes p)]))) ps)}) (group-by :rarity needed-for-level)))
+                                          {rarity
+                                           (map (fn [[id pins-for-id]]
+                                                  (let [owned (->> @pins (filter #(= (:id %) id)) first :dupes)
+                                                        needed (reduce + (map :dupes pins-for-id))]
+                                                    {:id id :missing (max (- needed owned) 0)}))
+                                                (group-by :id ps))})
+                                        (group-by :rarity needed-for-level)))
             commons-missing (missing (:common rarity-groups))
             rares-missing (missing (:rare rarity-groups))
             epics-missing (missing (:epic rarity-groups))
