@@ -232,11 +232,14 @@
                                                         missing (max (- needed owned) 0)
                                                         cost (reduce + (map :coins pins-for-id))]
                                                     {:id id
+                                                     :pin-name (-> pins-for-id first :pin-name)
                                                      :missing missing
+                                                     :level (apply max (map :pin-level pins-for-id))
                                                      :adjusted-cost (* (min (/ owned needed) 1) cost)}))
                                                 (group-by :id ps))})
                                         (group-by :rarity needed-for-level)))
-            adjusted-coins (min @coins (reduce + (map :adjusted-cost (flatten (flatten (vals rarity-groups))))))
+            path (flatten (flatten (vals rarity-groups)))
+            adjusted-coins (min @coins (reduce + (map :adjusted-cost path)))
             commons-missing (missing (:common rarity-groups))
             rares-missing (missing (:rare rarity-groups))
             epics-missing (missing (:epic rarity-groups))
@@ -246,8 +249,7 @@
                                (/ rares-missing rares-per-day)
                                (/ epics-missing epics-per-day)
                                (/ legendaries-missing legendaries-per-day)
-                               (/ (- coins-missing adjusted-coins) coins-per-day)))
-            path needed-for-level]
+                               (/ (- coins-missing adjusted-coins) coins-per-day)))]
         {:xp-progress xp-progress
          :path path
          :coins-required coins-missing
@@ -290,17 +292,15 @@
             :value @target-level
             :on-change #(reset! target-level (-> % .-target .-value int))}]
    (when-not (or (blank? @start-date) (nil? est))
-     (let [pin-and-level (map (fn [[k v]]
-                                [k (apply max (map :pin-level v))]) (group-by :pin-name path))]
-       [:span
-        [:p.path-header (str "ETA: " date)]
-        [:p.path-row (str coins-required " coins missing")]
-        [:p.path-row (str commons-required " commons missing")]
-        [:p.path-row (str rares-required " rares missing")]
-        [:p.path-row (str epics-required " epics missing")]
-        [:p.path-row (str legendaries-required " legendaries missing")]
-        (for [[pin level] pin-and-level]
-          ^{:key (str pin level)} [:p.path-row (str (upper-case pin) " to level " level)])]))])
+     [:span
+      [:p.path-header (str "ETA: " date)]
+      [:p.path-row (str coins-required " coins missing")]
+      [:p.path-row (str commons-required " commons missing")]
+      [:p.path-row (str rares-required " rares missing")]
+      [:p.path-row (str epics-required " epics missing")]
+      [:p.path-row (str legendaries-required " legendaries missing")]
+      (for [{:keys [pin-name level missing]} path]
+        ^{:key (str pin-name level)} [:p.path-row (str (upper-case pin-name) " to level " level " (" missing " missing)")])])])
 
 (defn- pin-inputs []
   [:div.pin-inputs
