@@ -186,9 +186,15 @@
 
 (defn- next-upgrades [p]
   (let [costs ((:rarity p) costs)]
-    (for [l (range (max (-> p :level dec) 1) (count costs))]
+    (for [l (range (max (-> p :level dec) 0) (count costs))]
       (let [cost (get costs l)]
-        (assoc cost :cx (/ (:coins cost) (:xp cost)) :pin-name (:name p) :pin-level (+ l 2) :rarity (:rarity p) :id (:id p))))))
+        (assoc cost
+               :cx (/ (:coins cost) (:xp cost))
+               :mx (- (:dupes cost) (:dupes p))
+               :pin-name (:name p)
+               :pin-level (+ l 2)
+               :rarity (:rarity p)
+               :id (:id p))))))
 
 (defn- owned-and-required [rarity-list]
   (reduce (fn [[f1 s1] [f2 s2]] [(+ f1 f2) (+ s1 s2)]) rarity-list))
@@ -214,7 +220,7 @@
   (->> @pins (filter #(= (:id %) id)) first :dupes))
 
 (defn- last-level-estimates [current-xp current-coins]
-  (let [r (sort-by :cx (mapcat next-upgrades @pins))
+  (let [r (sort-by (juxt :cx :mx) (mapcat next-upgrades @pins))
         requirements (reductions + (map :xp r))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         xp (nth total-xps (- @target-level 2))
