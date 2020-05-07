@@ -210,6 +210,9 @@
 (defn- missing [r]
   (reduce + (map :missing r)))
 
+(defn- owned [id]
+  (->> @pins (filter #(= (:id %) id)) first :dupes))
+
 (defn- last-level-estimates [current-xp current-coins]
   (let [r (sort-by :cx (mapcat next-upgrades @pins))
         requirements (reductions + (map :xp r))
@@ -224,11 +227,16 @@
             rarity-groups (into {} (map (fn [[rarity ps]]
                                           {rarity
                                            (map (fn [[id pins-for-id]]
-                                                  (let [owned (->> @pins (filter #(= (:id %) id)) first :dupes)
-                                                        needed (reduce + (map :dupes pins-for-id))]
-                                                    {:id id :missing (max (- needed owned) 0)}))
+                                                  (let [owned (owned id)
+                                                        needed (reduce + (map :dupes pins-for-id))
+                                                        missing (max (- needed owned) 0)
+                                                        cost (reduce + (map :coins pins-for-id))]
+                                                    {:id id
+                                                     :missing missing
+                                                     :adjusted-cost (* (min (/ owned needed) 1) cost)}))
                                                 (group-by :id ps))})
                                         (group-by :rarity needed-for-level)))
+            adjusted-coins (min @coins (reduce + (map :adjusted-cost (flatten (flatten (vals rarity-groups))))))
             commons-missing (missing (:common rarity-groups))
             rares-missing (missing (:rare rarity-groups))
             epics-missing (missing (:epic rarity-groups))
@@ -238,7 +246,7 @@
                                (/ rares-missing rares-per-day)
                                (/ epics-missing epics-per-day)
                                (/ legendaries-missing legendaries-per-day)
-                               (/ coins-missing coins-per-day)))
+                               (/ (- coins-missing adjusted-coins) coins-per-day)))
             path needed-for-level]
         {:xp-progress xp-progress
          :path path
