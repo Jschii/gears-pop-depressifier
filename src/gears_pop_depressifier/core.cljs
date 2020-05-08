@@ -219,14 +219,23 @@
 (defn- owned [id]
   (->> @pins (filter #(= (:id %) id)) first :dupes))
 
+(defn- f [[commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] {:keys [dupes coins rarity]}]
+  (max (/ coins coins-per-day)
+       (/ dupes (condp = rarity
+                  :common commons-per-day
+                  :rare rares-per-day
+                  :epic epics-per-day
+                  :legendary legendaries-per-day))))
+
 (defn- last-level-estimates [current-xp current-coins]
-  (let [r (sort-by (juxt :cx :mx) (mapcat next-upgrades @pins))
+  (let [per-day (per-day current-coins)
+        [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] per-day
+        next-upgrades (mapcat next-upgrades @pins)
+        r (sort-by (juxt :cx (partial f per-day) :mx) next-upgrades)
         requirements (reductions + (map :xp r))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         xp (nth total-xps (- @target-level 2))
-        xp-progress (double (/ current-xp (last total-xps)))
-        days-played (days-played)
-        [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] (per-day current-coins)]
+        xp-progress (double (/ current-xp (last total-xps)))]
     (if (< current-xp xp)
       (let [xp-required (- xp current-xp)
             needed-for-level (take (required xp-required) r)
