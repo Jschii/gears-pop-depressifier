@@ -234,7 +234,9 @@
         r (sort-by (juxt :cx (partial f per-day) :mx) next-upgrades)
         requirements (reductions + (map :xp r))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
-        xp (nth total-xps (- @target-level 2))
+        xp (if (and (> @target-level 1) (<= @target-level 20))
+             (nth total-xps (- @target-level 2))
+             0)
         xp-progress (double (/ current-xp (last total-xps)))]
     (if (< current-xp xp)
       (let [xp-required (- xp current-xp)
