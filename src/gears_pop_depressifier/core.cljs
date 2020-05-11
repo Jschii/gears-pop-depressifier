@@ -261,7 +261,7 @@
             rares-missing (missing (:rare rarity-groups))
             epics-missing (missing (:epic rarity-groups))
             legendaries-missing (missing (:legendary rarity-groups))
-            coins-missing (- (reduce + (map :coins needed-for-level)) @coins)
+            coins-missing (max (- (reduce + (map :coins needed-for-level)) @coins) 0)
             progress (int (max (/ commons-missing commons-per-day)
                                (/ rares-missing rares-per-day)
                                (/ epics-missing epics-per-day)
