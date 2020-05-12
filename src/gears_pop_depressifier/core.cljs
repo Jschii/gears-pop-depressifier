@@ -190,23 +190,25 @@
            level-range (range (max (-> p :level dec) 0) (count costs))
            result []]
       (if-let [cost (get costs (first level-range))]
-        (let [missing (max (- (:dupes cost) (max (- (:dupes p) dupes-used) 0)) 0)]
+        (let [missing (max (- (:dupes cost) (max (- (:dupes p) dupes-used) 0)) 0)
+              cost_ (assoc cost :common 999999999 :rare 999999999 :epic 999999999 :legendary 999999999)]
           (recur (+ dupes-used (:dupes cost))
                  (next level-range)
-                 (conj result (assoc cost
-                                     :cx (/ (:coins cost) (:xp cost))
-                                     :px (/ missing
-                                            (condp = (:rarity p)
-                                              :common commons-per-day
-                                              :rare rares-per-day
-                                              :epic epics-per-day
-                                              :legendary legendaries-per-day))
+                 (conj result (assoc cost_
+                                     :cx (/ (/ (:coins cost) coins-per-day) (:xp cost))
+                                     (:rarity p) (/ (/ missing
+                                                       (condp = (:rarity p)
+                                                         :common commons-per-day
+                                                         :rare rares-per-day
+                                                         :epic epics-per-day
+                                                         :legendary legendaries-per-day))
+                                                    (:xp cost))
                                      :pin-name (:name p)
                                      :pin-level (+ (first level-range) 2)
                                      :missing missing
                                      :rarity (:rarity p)
                                      :id (:id p)))))
-          result))))
+        result))))
 
 (defn- owned-and-required [rarity-list]
   (reduce (fn [[f1 s1] [f2 s2]] [(+ f1 f2) (+ s1 s2)]) rarity-list))
@@ -231,12 +233,35 @@
 (defn- owned [id]
   (->> @pins (filter #(= (:id %) id)) first :dupes))
 
+(defn- sort-upgrades [next-upgrades]
+  (loop [result []
+         remaining next-upgrades
+         coin 0
+         common 0
+         rare 0
+         epic 0
+         legendary 0]
+    (if (empty? remaining)
+      result
+      (let [[fst & rst] (sort-by :sort-value < (map (fn [p]
+                                                      (assoc p :sort-value (max (if (= :common (:rarity p)) (+ common (:common p)) common)
+                                                                                (if (= :rare  (:rarity p)) (+ rare (:rare p)) rare)
+                                                                                (if (= :epic  (:rarity p)) (+ epic (:epic p)) epic)
+                                                                                (if (= :legendary  (:rarity p)) (+ legendary (:legendary p)) legendary)
+                                                                                (+ coin (:cx p))))) remaining))]
+        (recur (conj result fst)
+               rst
+               (+ coin (:cx fst))
+               (if (= :common (:rarity fst)) (+ common (:common fst)) common)
+               (if (= :rare  (:rarity fst)) (+ rare (:rare fst)) rare)
+               (if (= :epic  (:rarity fst)) (+ epic (:epic fst)) epic)
+               (if (= :legendary  (:rarity fst)) (+ legendary (:legendary fst)) legendary))))))
+
 (defn- last-level-estimates [current-xp current-coins]
   (let [per-day (per-day current-coins)
         [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] per-day
-        next-upgrades (mapcat (partial next-upgrades per-day) @pins)
-        r (sort-by (juxt :cx :px) next-upgrades)
-        requirements (reductions + (map :xp r))
+        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) @pins))
+        requirements (reductions + (map :xp sorted-upgrades))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         xp (if (and (> @target-level 1) (<= @target-level 20))
              (nth total-xps (- @target-level 2))
@@ -244,7 +269,7 @@
         xp-progress (double (/ current-xp (last total-xps)))]
     (if (< current-xp xp)
       (let [xp-required (- xp current-xp)
-            needed-for-level (take (required xp-required) r)
+            needed-for-level (take (required xp-required) sorted-upgrades)
             rarity-groups (into {} (map (fn [[rarity ps]]
                                           {rarity
                                            (map (fn [[pin-name pins-for-id]]
