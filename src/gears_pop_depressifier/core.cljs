@@ -36,6 +36,22 @@
         max-pins (inc (reduce + (map :dupes costs)))]
     (format-percentage (double (/ current-pins max-pins)) "%.2f")))
 
+(defn- best-pin [[commons-per-day rares-per-day epics-per-day legendaries-per-day _]]
+  (first
+   (sort-by :days <
+         (for [{:keys [name rarity level dupes]} @pins]
+           (let [costs (rarity costs)
+                 current-pins (+ (total-pins rarity level) dupes)
+                 max-pins (inc (reduce + (map :dupes costs)))
+                 missing (- max-pins current-pins)
+                 per-day (/ (condp = rarity
+                              :common commons-per-day
+                              :rare rares-per-day
+                              :epic epics-per-day
+                              :legendary legendaries-per-day)
+                            (pins-of-rarity rarity))]
+             {:name name :days (/ missing per-day)})))))
+
 (defn- upgradeable [p]
   (let [costs ((:rarity p) costs)]
     (loop [dupes (:dupes p)
@@ -153,8 +169,10 @@
   (let [per-day (per-day current-coins)
         [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] per-day
         sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) @pins))
+
         requirements (reductions + (map :xp sorted-upgrades))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
+        best-pin (best-pin per-day)
         xp (if (and (> @target-level 1) (<= @target-level 20))
              (nth total-xps (- @target-level 2))
              0)
@@ -186,30 +204,16 @@
          :rares-required rares-missing
          :epics-required epics-missing
          :legendaries-required legendaries-missing
-         :commons-per-day commons-per-day
-         :rares-per-day rares-per-day
-         :epics-per-day epics-per-day
-         :legendaries-per-day legendaries-per-day
-         :coins-per-day coins-per-day
          :date (when (pos? progress)
-                 (completion-date progress))})
+                 (completion-date progress))
+         :best-pin best-pin})
       {:xp-progress xp-progress
-       :commons-per-day commons-per-day
-       :rares-per-day rares-per-day
-       :epics-per-day epics-per-day
-       :legendaries-per-day legendaries-per-day
-       :coins-per-day coins-per-day})))
+       :best-pin best-pin})))
 
-(defn- total-progress [{xp :xp-progress commons :commons-per-day rares :rares-per-day epics :epics-per-day legendaries :legendaries-per-day coins :coins-per-day}]
+(defn- total-progress [{xp :xp-progress best-pin :best-pin}]
   [:div.total-progress
    [:span (str "XP progress: " (gstring/format "%.2f" (* 100 xp)) "%")]
-   (when (and commons rares epics legendaries coins)
-     [:span
-      [:span (str (gstring/format "%.2f" commons) " commons, ")]
-      [:span (str (gstring/format "%.2f" rares) " rares, ")]
-      [:span (str (gstring/format "%.2f" epics) " epics, ")]
-      [:span (str (gstring/format "%.2f" legendaries) " legendaries and ")]
-      [:span (str (gstring/format "%.2f" coins) " coins per day")]])])
+   [:span (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]])
 
 (defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required] :as est}]
   [:div.estimates
