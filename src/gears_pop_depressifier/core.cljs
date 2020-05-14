@@ -15,6 +15,10 @@
 (defonce start-date (local-storage (r/atom "") :start-date))
 (defonce coins (local-storage (r/atom 0) :coins))
 (defonce target-level (r/atom 20))
+(defonce extra-commons (r/atom 0))
+(defonce extra-rares (r/atom 0))
+(defonce extra-epics (r/atom 0))
+(defonce extra-legendaries (r/atom 0))
 
 (defn- total-pins [rarity level]
   (if (< level 2)
@@ -25,7 +29,12 @@
         (inc (nth (reductions + dupes) (- level 2)))))))
 
 (defn- pins-of-rarity [rarity]
-  (count (filter #(= (:rarity %) rarity) all-pins)))
+  (+ (count (filter #(= (:rarity %) rarity) all-pins))
+     (condp = rarity
+       :common @extra-commons
+       :rare @extra-rares
+       :epic @extra-epics
+       :legendary @extra-legendaries)))
 
 (defn- format-percentage [percentage formatter]
   (str (gstring/format formatter (* 100 percentage)) "%"))
@@ -39,18 +48,18 @@
 (defn- best-pin [[commons-per-day rares-per-day epics-per-day legendaries-per-day _]]
   (first
    (sort-by :days <
-         (for [{:keys [name rarity level dupes]} @pins]
-           (let [costs (rarity costs)
-                 current-pins (+ (total-pins rarity level) dupes)
-                 max-pins (inc (reduce + (map :dupes costs)))
-                 missing (- max-pins current-pins)
-                 per-day (/ (condp = rarity
-                              :common commons-per-day
-                              :rare rares-per-day
-                              :epic epics-per-day
-                              :legendary legendaries-per-day)
-                            (pins-of-rarity rarity))]
-             {:name name :days (/ missing per-day)})))))
+            (for [{:keys [name rarity level dupes]} @pins]
+              (let [costs (rarity costs)
+                    current-pins (+ (total-pins rarity level) dupes)
+                    max-pins (inc (reduce + (map :dupes costs)))
+                    missing (- max-pins current-pins)
+                    per-day (/ (condp = rarity
+                                 :common commons-per-day
+                                 :rare rares-per-day
+                                 :epic epics-per-day
+                                 :legendary legendaries-per-day)
+                               (pins-of-rarity rarity))]
+                {:name name :days (/ missing per-day)})))))
 
 (defn- upgradeable [p]
   (let [costs ((:rarity p) costs)]
@@ -115,8 +124,7 @@
                                      :pin-name (:name p)
                                      :pin-level (+ (first level-range) 2)
                                      :missing missing
-                                     :rarity (:rarity p)
-                                     :id (:id p)))))
+                                     :rarity (:rarity p)))))
         result))))
 
 (defn- current-pins [rarity]
@@ -168,7 +176,14 @@
 (defn- last-level-estimates [current-xp current-coins]
   (let [per-day (per-day current-coins)
         [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] per-day
-        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) @pins))
+        make-extra (fn [rarity id]
+                     {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
+        pins-with-extras (concat @pins
+                                 (mapv (partial make-extra :common) (range @extra-commons))
+                                 (mapv (partial make-extra :rare) (range @extra-rares))
+                                 (mapv (partial make-extra :epic) (range @extra-epics))
+                                 (mapv (partial make-extra :legendary) (range @extra-legendaries)))
+        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) pins-with-extras))
 
         requirements (reductions + (map :xp sorted-upgrades))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
@@ -278,6 +293,34 @@
             :value @coins
             :on-change #(reset! coins (-> % .-target .-value int))}]])
 
+(defn- extra-inputs []
+  [:span
+   [:p "What if they were to add new pins?"]
+   [:label {:for "extra-commons"} "Commons:"]
+   [:input {:type "number"
+            :id "extra-commons"
+            :min 0
+            :value @extra-commons
+            :on-change #(reset! extra-commons (-> % .-target .-value int))}]
+   [:label {:for "extra-rares"} "Rares:"]
+   [:input {:type "number"
+            :id "extra-rares"
+            :min 0
+            :value @extra-rares
+            :on-change #(reset! extra-rares (-> % .-target .-value int))}]
+   [:label {:for "extra-epics"} "Epics:"]
+   [:input {:type "number"
+            :id "extra-epics"
+            :min 0
+            :value @extra-epics
+            :on-change #(reset! extra-epics (-> % .-target .-value int))}]
+   [:label {:for "extra-legendaries"} "Legendaries:"]
+   [:input {:type "number"
+            :id "extra-legendaries"
+            :min 0
+            :value @extra-legendaries
+            :on-change #(reset! extra-legendaries (-> % .-target .-value int))}]])
+
 (defn- root []
   (let [current-xp (current-xp)
         current-coins (+ @coins (current-coins-used))
@@ -287,6 +330,8 @@
      [:div.other-inputs
       [date-picker]
       [coin-input]]
+     [:div.other-inputs
+      [extra-inputs]]
      [pin-inputs]
      [path estimates]]))
 

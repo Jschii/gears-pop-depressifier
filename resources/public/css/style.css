@@ -18,6 +18,7 @@ body {
     flex-flow: row wrap;
     justify-content: center;
     width: 60%;
+    padding-top: 50px;
 }
 
 .pin-input {
@@ -111,7 +112,10 @@ input {
     margin: auto;
     justify-content: center;
     width: 80%;
-    padding-bottom: 50px;
+}
+
+.other-inputs p {
+    text-align: center;
 }
 
 .other-inputs >span {
