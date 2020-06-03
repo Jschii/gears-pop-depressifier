@@ -85,7 +85,6 @@
                    {:name "gnasher gang" :rarity :rare}
                    {:name "del walker" :rarity :rare}
                    {:name "deadeye" :rarity :rare}
-                   {:name "tai kaliso" :rarity :rare}
                    {:name "sam byrne" :rarity :epic}
                    {:name "marcus fenix" :rarity :epic}
                    {:name "dominic santiago" :rarity :epic}
@@ -117,7 +116,8 @@
                    {:name "seeder" :rarity :epic}
                    {:name "emergence hole" :rarity :epic}
                    {:name "windflare" :rarity :epic}
-                   {:name "gabe diaz" :rarity :legendary}])
+                   {:name "gabe diaz" :rarity :legendary}
+                   {:name "tai kaliso" :rarity :rare}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
 
