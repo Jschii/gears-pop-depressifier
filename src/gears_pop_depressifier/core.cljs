@@ -5,9 +5,8 @@
             [goog.string.format]
             [alandipert.storage-atom :refer [local-storage]]
             [clojure.string :refer [blank? upper-case]]
-            [clojure.set :refer [rename-keys]]
             [tick.alpha.api :as t]
-            [gears-pop-depressifier.data :refer [pins-with-ids costs all-pins total-xps]]))
+            [gears-pop-depressifier.data :refer [pins-with-ids costs all-pins total-xps bundles]]))
 
 (enable-console-print!)
 
@@ -138,21 +137,22 @@
      (/ (current-pins :rare) days-played)
      (/ (current-pins :epic) days-played)
      (/ (current-pins :legendary) days-played)
-     (/ current-coins days-played)]
-    [nil nil nil nil nil]))
+     (/ current-coins days-played)
+     days-played]
+    [nil nil nil nil nil nil]))
 
 (defn- missing [r]
   (reduce + (map :missing r)))
 
-(defn- pin-progress [r [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day]]
-  (let [most-missing-of-rarity (fn [rarity]
-                                 (apply max (map :missing (rarity r))))
-        rarity-progress (fn [rarity per-day]
-                          (/ (most-missing-of-rarity rarity) (/ per-day (pins-of-rarity rarity))))]
-    (max (rarity-progress :common commons-per-day)
-         (rarity-progress :rare rares-per-day)
-         (rarity-progress :epic epics-per-day)
-         (rarity-progress :legendary legendaries-per-day))))
+(defn- pin-progress [r [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day days-played] [bundle-commons bundle-rares bundle-epics bundle-legendaries]]
+  (let [most-missing-of-rarity (fn [rarity bundle-pins]
+                                 (- (apply max (map :missing (rarity r))) bundle-pins))
+        rarity-progress (fn [rarity per-day bundle-pins]
+                          (/ (most-missing-of-rarity rarity bundle-pins) (/ per-day (pins-of-rarity rarity))))]
+    (max (rarity-progress :common (+ commons-per-day (/ bundle-commons days-played)) bundle-commons)
+         (rarity-progress :rare (+ rares-per-day (/ bundle-rares days-played)) bundle-rares)
+         (rarity-progress :epic (+ epics-per-day (/ bundle-epics days-played)) bundle-epics)
+         (rarity-progress :legendary (+ legendaries-per-day (/ bundle-legendaries days-played)) bundle-legendaries))))
 
 (defn- sort-upgrades [next-upgrades]
   (loop [result []
@@ -175,7 +175,7 @@
 
 (defn- last-level-estimates [current-xp current-coins]
   (let [per-day (per-day current-coins)
-        [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day] per-day
+        [_ _ _ _ coins-per-day days-played] per-day
         make-extra (fn [rarity id]
                      {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
         pins-with-extras (concat @pins
@@ -211,7 +211,15 @@
             epics-missing (missing (:epic rarity-groups))
             legendaries-missing (missing (:legendary rarity-groups))
             progress (int (max (/ coins-missing coins-per-day)
-                               (pin-progress rarity-groups per-day)))]
+                               (pin-progress rarity-groups per-day [0 0 0 0])))
+            best-bundle (last (sort-by :value (for [bundle bundles]
+                                                (let [bundle-progress (int (max (/ (- coins-missing (:coins bundle)) (+ coins-per-day (/ (:coins bundle) days-played)))
+                                                                                (pin-progress rarity-groups per-day
+                                                                                              [(/ (:commons bundle) (pins-of-rarity :common))
+                                                                                               (/ (:rares bundle) (pins-of-rarity :rare))
+                                                                                               (/ (:epics bundle) (pins-of-rarity :epic))
+                                                                                               (/ (:legendaries bundle) (pins-of-rarity :legendary))])))]
+                                                  {:name (:name bundle) :value (/ (- progress bundle-progress) (:crystals bundle))}))))]
         {:xp-progress xp-progress
          :path path
          :coins-required coins-missing
@@ -219,16 +227,18 @@
          :rares-required rares-missing
          :epics-required epics-missing
          :legendaries-required legendaries-missing
+         :best-bundle (:name best-bundle)
          :date (when (pos? progress)
                  (completion-date progress))
          :best-pin best-pin})
       {:xp-progress xp-progress
        :best-pin best-pin})))
 
-(defn- total-progress [{xp :xp-progress best-pin :best-pin}]
+(defn- total-progress [{xp :xp-progress best-pin :best-pin best-bundle :best-bundle}]
   [:div.total-progress
    [:span (str "XP progress: " (gstring/format "%.2f" (* 100 xp)) "%")]
-   [:span (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]])
+   [:span (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]
+   [:span (str "Best bundle: " (upper-case best-bundle))]])
 
 (defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required] :as est}]
   [:div.estimates

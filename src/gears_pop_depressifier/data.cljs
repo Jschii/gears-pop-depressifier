@@ -119,3 +119,18 @@
                    {:name "gabe diaz" :rarity :legendary}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
+
+(defonce bundles [{:name "coin fortune"
+                   :crystals 4500
+                   :coins 1250000
+                   :commons 0
+                   :rares 0
+                   :epics 0
+                   :legendaries 0}
+                  {:name "legendary bronze"
+                   :crystals 2250
+                   :coins 78656.5
+                   :commons 5014
+                   :rares 1038
+                   :epics 173
+                   :legendaries 4.6148}])
