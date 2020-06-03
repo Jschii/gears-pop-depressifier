@@ -85,6 +85,7 @@
                    {:name "gnasher gang" :rarity :rare}
                    {:name "del walker" :rarity :rare}
                    {:name "deadeye" :rarity :rare}
+                   {:name "tai kaliso" :rarity :rare}
                    {:name "sam byrne" :rarity :epic}
                    {:name "marcus fenix" :rarity :epic}
                    {:name "dominic santiago" :rarity :epic}
