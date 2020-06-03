@@ -227,7 +227,8 @@
          :rares-required rares-missing
          :epics-required epics-missing
          :legendaries-required legendaries-missing
-         :best-bundle (:name best-bundle)
+         :best-bundle (when (pos? (:value best-bundle))
+                        (:name best-bundle))
          :date (when (pos? progress)
                  (completion-date progress))
          :best-pin best-pin})
@@ -238,7 +239,8 @@
   [:div.total-progress
    [:span (str "XP progress: " (gstring/format "%.2f" (* 100 xp)) "%")]
    [:span (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]
-   [:span (str "Best bundle: " (upper-case best-bundle))]])
+   (when best-bundle
+     [:span (str "Best bundle: " (upper-case best-bundle))])])
 
 (defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required] :as est}]
   [:div.estimates
