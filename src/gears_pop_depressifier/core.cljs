@@ -69,8 +69,10 @@
            c (get costs (dec level))]
       (if (or (< dupes (:dupes c)) (> level (count costs)))
         (if (pos? coins)
-          (str "Upgradeable to level " level " with " coins " coins for that sweet " (format-percentage (/ xp (last total-xps)) "%.2f") " extra total progress")
-          (str (- (:dupes c) dupes) " more needed for next level"))
+          [:span.upgradeable.green
+           (str "Upgradeable to level " level " with " coins " coins for that sweet "
+                (format-percentage (/ xp (last total-xps)) "%.2f") " extra total progress")]
+          [:span.upgradeable.red (str (- (:dupes c) dupes) " more needed for next level")])
         (recur (- dupes (:dupes c))
                (inc level)
                (+ coins (:coins c))
@@ -254,13 +256,20 @@
    (when-not (or (blank? @start-date) (nil? est))
      [:span
       [:p.path-header (str "ETA: " date)]
-      [:p.path-row (str coins-required " coins missing")]
-      [:p.path-row (str commons-required " commons missing")]
-      [:p.path-row (str rares-required " rares missing")]
-      [:p.path-row (str epics-required " epics missing")]
-      [:p.path-row (str legendaries-required " legendaries missing")]
+      [:p.path-row {:class (if (zero? coins-required) "green" "red")}
+       (str coins-required " coins missing")]
+      [:p.path-row {:class (if (zero? commons-required) "green" "red")}
+       (str commons-required " commons missing")]
+      [:p.path-row {:class (if (zero? rares-required) "green" "red")}
+       (str rares-required " rares missing")]
+      [:p.path-row {:class (if (zero? epics-required) "green" "red")}
+       (str epics-required " epics missing")]
+      [:p.path-row {:class (if (zero? legendaries-required) "green" "red")}
+       (str legendaries-required " legendaries missing")]
       (for [{:keys [pin-name level missing]} path]
-        ^{:key (str pin-name level)} [:p.path-row (str (upper-case pin-name) " to level " level " (" missing " missing)")])])])
+        ^{:key (str pin-name level)}
+        [:p.path-row {:class (if (zero? missing) "green" "red")}
+         (str (upper-case pin-name) " to level " level " (" missing " missing)")])])])
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -287,7 +296,7 @@
                    :on-change (partial update :dupes)}]]
          [:div.pin-progress
           [:span.pin-progress progress]
-          [:span.upgradeable (upgradeable pin)]]])))])
+          (upgradeable pin)]])))])
 
 (defn- date-picker []
   [:span.start-date
