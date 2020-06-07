@@ -181,7 +181,7 @@
   (let [current-xp (current-xp)
         current-coins (+ @coins (current-coins-used))
         per-day (per-day current-coins)
-        [_ _ _ _ coins-per-day _] per-day
+        [_ _ _ _ coins-per-day days-played] per-day
         make-extra (fn [rarity id]
                      {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
         pins-with-extras (concat @pins
@@ -221,23 +221,22 @@
             legendaries-missing (missing (:legendary rarity-groups))
             progress (max (/ coins-missing coins-per-day)
                           (pin-progress rarity-groups per-day [0 0 0 0]))
-            foo (fn [bundle]
-                  (max (/ (- coins-missing (:coins bundle)) coins-per-day)
-                       (pin-progress rarity-groups per-day
-                                     [(/ (:commons bundle) (pins-of-rarity :common))
-                                      (/ (:rares bundle) (pins-of-rarity :rare))
-                                      (/ (:epics bundle) (pins-of-rarity :epic))
-                                      (/ (:legendaries bundle) (pins-of-rarity :legendary))])))
-            foo2 (fn [{rarity :rarity id :id}]
-                   (println rarity-groups)
-                   (let [[c rg] (condp = rarity
-                                  :common [(/ (+ coins-missing 200) coins-per-day) (update-in rarity-groups [:common (keyword (str "id" id)) :missing] #(- % 50))]
-                                  :rare [(/ (+ coins-missing 800) coins-per-day) (update-in rarity-groups [:rare (keyword (str "id" id)) :missing] #(- % 10))]
-                                  :epic [(/ (+ coins-missing 4000) coins-per-day) (update-in rarity-groups [:epic (keyword (str "id" id)) :missing] #(- % 4))])]
-                     (- progress (max c (pin-progress rg per-day [0 0 0 0])))))
-            best-bundle (last (sort-by :value (for [bundle bundles]
-                                                (let [bundle-progress (foo bundle)]
-                                                  {:name (:name bundle) :value (/ (- progress bundle-progress) (:crystals bundle))}))))]
+            bundle-progress (fn [bundle]
+                              (max (/ (- coins-missing (:coins bundle)) (+ coins-per-day (/ (:coins bundle) days-played)))
+                                   (pin-progress rarity-groups per-day
+                                                 [(/ (:commons bundle) (pins-of-rarity :common))
+                                                  (/ (:rares bundle) (pins-of-rarity :rare))
+                                                  (/ (:epics bundle) (pins-of-rarity :epic))
+                                                  (/ (:legendaries bundle) (pins-of-rarity :legendary))])))
+            deal-progress (fn [{rarity :rarity id :id}]
+                            (let [[c rg] (condp = rarity
+                                           :common [(/ (+ coins-missing 200) (- coins-per-day (/ 200 days-played))) (update-in rarity-groups [:common (keyword (str "id" id)) :missing] #(- % 50))]
+                                           :rare [(/ (+ coins-missing 800) (- coins-per-day (/ 800 days-played))) (update-in rarity-groups [:rare (keyword (str "id" id)) :missing] #(- % 10))]
+                                           :epic [(/ (+ coins-missing 4000) (- coins-per-day (/ 4000 days-played))) (update-in rarity-groups [:epic (keyword (str "id" id)) :missing] #(- % 4))])]
+                              (- progress (max c (pin-progress rg per-day [0 0 0 0])))))
+            bundles (sort-by :value > (for [bundle bundles]
+                                        (let [bundle-progress (bundle-progress bundle)]
+                                          {:name (:name bundle) :value (* (/ (- progress bundle-progress) (:crystals bundle)) 1440)})))]
         {:xp-progress xp-progress
          :path path
          :coins-required coins-missing
@@ -246,17 +245,16 @@
          :epics-required epics-missing
          :legendaries-required legendaries-missing
          :deals (keep (fn [{:keys [name rarity] :as p}]
-                        (when (and (not= rarity :legendary) (pos? (foo2 p)))
+                        (when (and (not= rarity :legendary) (pos? (deal-progress p)))
                           name)) @pins)
-         :best-bundle (when (pos? (:value best-bundle))
-                        (:name best-bundle))
+         :bundles bundles
          :date (when (pos? progress)
                  (completion-date (int progress)))
          :best-pin best-pin})
       {:xp-progress xp-progress
        :best-pin best-pin})))
 
-(defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required xp-progress best-pin best-bundle deals] :as est}]
+(defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required xp-progress best-pin bundles deals] :as est}]
   [:div.stats
    [:div.estimates
     [:label {:for "level"} "Target level:"]
@@ -286,12 +284,16 @@
    [:div.deals
     [:div (str "XP progress: " (gstring/format "%.2f" (* 100 xp-progress)) "%")]
     [:div (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]
-    (when best-bundle
-      [:div (str "Best bundle: " (upper-case best-bundle))])
-    [:div "Deals worth taking:" (if-not (empty? deals)
-                                  (for [deal deals]
-                                    [:p (upper-case deal)])
-                                  [:p "None"])]]])
+    (when-not (empty? bundles)
+      [:div "Bundles (value minutes per crystal):"
+       (for [{:keys [name value]} bundles]
+         ^{:key (str name value)}
+         [:p (str (upper-case name) " (" (gstring/format "%.2f" value) " mpc)")])])
+    [:div "Daily deals worth taking:" (if-not (empty? deals)
+                                        (for [deal deals]
+                                          ^{:key (str deal)}
+                                          [:p (upper-case deal)])
+                                        [:p "None"])]]])
 
 (defn- pin-inputs []
   [:div.pin-inputs
