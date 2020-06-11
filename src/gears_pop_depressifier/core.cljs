@@ -207,6 +207,32 @@
                         :epic [(/ (+ coins-missing 4000) (- coins-per-day (/ 4000 days-played))) (update-in state [:pins :epic (keyword (str "id" id)) :missing] #(- % 4))])]
     (- (progress state) (max c (pin-progress new-state)))))
 
+(defn- make-state [per-day xp-required]
+  (let [make-extra (fn [rarity id]
+                     {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
+        pins-with-extras (concat @pins
+                                 (mapv (partial make-extra :common) (range @extra-commons))
+                                 (mapv (partial make-extra :rare) (range @extra-rares))
+                                 (mapv (partial make-extra :epic) (range @extra-epics))
+                                 (mapv (partial make-extra :legendary) (range @extra-legendaries)))
+        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) pins-with-extras))
+        requirements (reductions + (map :xp sorted-upgrades))
+        required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
+        needed-for-level (take (required xp-required) sorted-upgrades)]
+    (merge {:coins-missing (max (-> needed-for-level last :coins-missing -) 0)
+            :pins (into {} (map (fn [[rarity ps]]
+                                  {rarity
+                                   (into {}
+                                         (map (fn [[pin-name pins-for-id]]
+                                                {(keyword (str "id" (-> pins-for-id first :id)))
+                                                 {:pin-name pin-name
+                                                  :missing (apply max (map :missing pins-for-id))
+                                                  :level (apply max (map :pin-level pins-for-id))
+                                                  :cost (reduce + (map :coins (filter #(pos? (:missing %)) pins-for-id)))}})
+                                              (group-by :pin-name ps)))})
+                                (group-by :rarity needed-for-level)))}
+           per-day)))
+
 (defn- progress-with-crystals [state]
   (let [update-state (fn [{:keys [pins days-played coins-missing coins-per-day commons-per-day rares-per-day epics-per-day legendaries-per-day]} b]
                        {:pins (add-bundle b pins)
@@ -241,37 +267,12 @@
 (defn- last-level-estimates []
   (let [current-xp (current-xp)
         per-day (per-day)
-        make-extra (fn [rarity id]
-                     {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
-        pins-with-extras (concat @pins
-                                 (mapv (partial make-extra :common) (range @extra-commons))
-                                 (mapv (partial make-extra :rare) (range @extra-rares))
-                                 (mapv (partial make-extra :epic) (range @extra-epics))
-                                 (mapv (partial make-extra :legendary) (range @extra-legendaries)))
-        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) pins-with-extras))
-
-        requirements (reductions + (map :xp sorted-upgrades))
-        required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         xp (if (and (> @target-level 1) (<= @target-level 20))
              (nth total-xps (- @target-level 2))
              0)
         xp-progress (double (/ current-xp (last total-xps)))]
     (if (< current-xp xp)
-      (let [xp-required (- xp current-xp)
-            needed-for-level (take (required xp-required) sorted-upgrades)
-            state (merge {:coins-missing (max (-> needed-for-level last :coins-missing -) 0)
-                          :pins (into {} (map (fn [[rarity ps]]
-                                                {rarity
-                                                 (into {}
-                                                       (map (fn [[pin-name pins-for-id]]
-                                                              {(keyword (str "id" (-> pins-for-id first :id)))
-                                                               {:pin-name pin-name
-                                                                :missing (apply max (map :missing pins-for-id))
-                                                                :level (apply max (map :pin-level pins-for-id))
-                                                                :cost (reduce + (map :coins (filter #(pos? (:missing %)) pins-for-id)))}})
-                                                            (group-by :pin-name ps)))})
-                                              (group-by :rarity needed-for-level)))}
-                         per-day)
+      (let [state (make-state per-day (- xp current-xp))
             path (->> state :pins vals (map vals) flatten)
             commons-missing (-> state :pins :common (missing))
             rares-missing (-> state :pins :rare (missing))
