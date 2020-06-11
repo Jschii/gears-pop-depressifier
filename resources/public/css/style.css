@@ -134,7 +134,11 @@ li.selected {
 }
 
 .coins >input {
-    min-width: 180px;
+    min-width: 120px;
+}
+
+.crystals >input {
+    min-width: 120px;
 }
 
 
