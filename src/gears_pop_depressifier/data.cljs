@@ -117,7 +117,8 @@
                    {:name "emergence hole" :rarity :epic}
                    {:name "windflare" :rarity :epic}
                    {:name "gabe diaz" :rarity :legendary}
-                   {:name "tai kaliso" :rarity :rare}])
+                   {:name "tai kaliso" :rarity :rare}
+                   {:name "sid redburn" :rarity :epic}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
 
@@ -135,3 +136,6 @@
                    :rares 1038
                    :epics 173
                    :legendaries 4.6148}])
+#_(defonce thumpers [{:name "raam"}
+                   {:name "brumak"}
+                   {:name "coin"}])
