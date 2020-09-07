@@ -19,6 +19,12 @@
 (defonce extra-rares (r/atom 0))
 (defonce extra-epics (r/atom 0))
 (defonce extra-legendaries (r/atom 0))
+(defonce override? (r/atom false))
+(defonce commons-per-day (r/atom 0))
+(defonce rares-per-day (r/atom 0))
+(defonce epics-per-day (r/atom 0))
+(defonce legendaries-per-day (r/atom 0))
+(defonce coins-per-day (r/atom 0))
 (defonce menu-item (r/atom 0))
 
 (defn- total-pins [rarity level]
@@ -46,7 +52,7 @@
         max-pins (inc (reduce + (map :dupes costs)))]
     (format-percentage (double (/ current-pins max-pins)) "%.2f")))
 
-(defn- best-pin [{:keys [commons-per-day rares-per-day epics-per-day legendaries-per-day]}]
+(defn- best-pin []
   (first
    (sort-by :days <
             (for [{:keys [name rarity level dupes]} @pins]
@@ -55,10 +61,10 @@
                     max-pins (inc (reduce + (map :dupes costs)))
                     missing (- max-pins current-pins)
                     per-day (/ (condp = rarity
-                                 :common commons-per-day
-                                 :rare rares-per-day
-                                 :epic epics-per-day
-                                 :legendary legendaries-per-day)
+                                 :common @commons-per-day
+                                 :rare @rares-per-day
+                                 :epic @epics-per-day
+                                 :legendary @legendaries-per-day)
                                (pins-of-rarity rarity))]
                 {:name name :days (/ missing per-day)})))))
 
@@ -98,16 +104,16 @@
 (defn- completion-date [days]
   (t/format :iso-local-date (t/date (t/+ (t/instant) (t/new-duration days :days)))))
 
-(defn- next-upgrades [{:keys [commons-per-day rares-per-day epics-per-day legendaries-per-day coins-per-day]} p]
+(defn- next-upgrades [p]
   (let [costs ((:rarity p) costs)
         owned (+ (reduce + (map :dupes (take (max (-> p :level dec) 0) costs)))
                  (:dupes p))
         needed-for-level (fn [level]
                            (reduce + (map :dupes (take (inc level) costs))))
-        cpd (/ commons-per-day (pins-of-rarity :common))
-        rpd (/ rares-per-day (pins-of-rarity :rare))
-        epd (/ epics-per-day (pins-of-rarity :epic))
-        lpd (/ legendaries-per-day (pins-of-rarity :legendary))]
+        cpd (/ @commons-per-day (pins-of-rarity :common))
+        rpd (/ @rares-per-day (pins-of-rarity :rare))
+        epd (/ @epics-per-day (pins-of-rarity :epic))
+        lpd (/ @legendaries-per-day (pins-of-rarity :legendary))]
     (loop [dupes-used 0
            level-range (range (max (-> p :level dec) 0) (count costs))
            result []]
@@ -116,7 +122,7 @@
           (recur (+ dupes-used (:dupes cost))
                  (next level-range)
                  (conj result (assoc cost
-                                     :cx (/ (/ (:coins cost) coins-per-day) (:xp cost))
+                                     :cx (/ (/ (:coins cost) @coins-per-day) (:xp cost))
                                      :px (/ (/ missing
                                                (condp = (:rarity p)
                                                  :common cpd
@@ -137,28 +143,27 @@
                  (filter #(= rarity (:rarity %)) @pins))))
 
 (defn- per-day []
-  (let [current-coins (+ @coins (current-coins-used))]
-    (if-let [days-played (days-played)]
-      {:commons-per-day (/ (current-pins :common) days-played)
-       :rares-per-day (/ (current-pins :rare) days-played)
-       :epics-per-day (/ (current-pins :epic) days-played)
-       :legendaries-per-day (/ (current-pins :legendary) days-played)
-       :coins-per-day (/ current-coins days-played)
-       :days-played days-played}
-      {})))
+  (let [current-coins (+ @coins (current-coins-used))
+        days-played (days-played)]
+    (when days-played
+      (reset! commons-per-day (/ (current-pins :common) days-played))
+      (reset! rares-per-day (/ (current-pins :rare) days-played))
+      (reset! epics-per-day (/ (current-pins :epic) days-played))
+      (reset! legendaries-per-day (/ (current-pins :legendary) days-played))
+      (reset! coins-per-day (/ current-coins days-played)))))
 
 (defn- missing [r]
   (reduce + (map :missing (vals r))))
 
-(defn- pin-progress [{:keys [pins commons-per-day rares-per-day epics-per-day legendaries-per-day]}]
+(defn- pin-progress [pins]
   (let [most-missing-of-rarity (fn [rarity]
                                  (apply max (map :missing (vals (rarity pins)))))
         rarity-progress (fn [rarity per-day]
                           (/ (most-missing-of-rarity rarity) (/ per-day (pins-of-rarity rarity))))]
-    (max (rarity-progress :common commons-per-day)
-         (rarity-progress :rare rares-per-day)
-         (rarity-progress :epic epics-per-day)
-         (rarity-progress :legendary legendaries-per-day))))
+    (max (rarity-progress :common @commons-per-day)
+         (rarity-progress :rare @rares-per-day)
+         (rarity-progress :epic @epics-per-day)
+         (rarity-progress :legendary @legendaries-per-day))))
 
 (defn- sort-upgrades [next-upgrades]
   (loop [result []
@@ -192,22 +197,22 @@
        (add-pins :epic (/ (:epics bundle) (pins-of-rarity :epic)))
        (add-pins :legendary (/ (:legendaries bundle) (pins-of-rarity :legendary)))))
 
-(defn- bundle-progress [bundle {:keys [pins coins-missing coins-per-day days-played] :as state}]
-  (max (/ (- coins-missing (:coins bundle)) (+ coins-per-day (/ (:coins bundle) days-played)))
-       (pin-progress (update state :pins #(add-bundle bundle pins)))))
+(defn- bundle-progress [bundle {:keys [pins coins-missing days-played] :as state}]
+  (max (/ (- coins-missing (:coins bundle)) (+ @coins-per-day (/ (:coins bundle) days-played)))
+       (pin-progress (add-bundle bundle pins))))
 
-(defn- progress [{:keys [coins-missing coins-per-day] :as state}]
-  (max (/ coins-missing coins-per-day)
-       (pin-progress state)))
+(defn- progress [{:keys [pins coins-missing] :as state}]
+  (max (/ coins-missing @coins-per-day)
+       (pin-progress pins)))
 
-(defn- deal-progress [{rarity :rarity id :id} {coins-missing :coins-missing coins-per-day :coins-per-day days-played :days-played :as state}]
+(defn- deal-progress [{rarity :rarity id :id} {coins-missing :coins-missing days-played :days-played :as state}]
   (let [[c new-state] (condp = rarity
-                        :common [(/ (+ coins-missing 200) (- coins-per-day (/ 200 days-played))) (update-in state [:pins :common (keyword (str "id" id)) :missing] #(- % 50))]
-                        :rare [(/ (+ coins-missing 800) (- coins-per-day (/ 800 days-played))) (update-in state [:pins :rare (keyword (str "id" id)) :missing] #(- % 10))]
-                        :epic [(/ (+ coins-missing 4000) (- coins-per-day (/ 4000 days-played))) (update-in state [:pins :epic (keyword (str "id" id)) :missing] #(- % 4))])]
+                        :common [(/ (+ coins-missing 200) (- @coins-per-day (/ 200 days-played))) (update-in state [:pins :common (keyword (str "id" id)) :missing] #(- % 50))]
+                        :rare [(/ (+ coins-missing 800) (- @coins-per-day (/ 800 days-played))) (update-in state [:pins :rare (keyword (str "id" id)) :missing] #(- % 10))]
+                        :epic [(/ (+ coins-missing 4000) (- @coins-per-day (/ 4000 days-played))) (update-in state [:pins :epic (keyword (str "id" id)) :missing] #(- % 4))])]
     (- (progress state) (max c (pin-progress new-state)))))
 
-(defn- make-state [per-day xp-required]
+(defn- make-state [xp-required]
   (let [make-extra (fn [rarity id]
                      {:name (str "extra-" (name rarity) "-" (inc id)) :rarity rarity :level 0 :dupes 0})
         pins-with-extras (concat @pins
@@ -215,12 +220,13 @@
                                  (mapv (partial make-extra :rare) (range @extra-rares))
                                  (mapv (partial make-extra :epic) (range @extra-epics))
                                  (mapv (partial make-extra :legendary) (range @extra-legendaries)))
-        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades per-day) pins-with-extras))
+        sorted-upgrades (sort-upgrades (mapcat (partial next-upgrades) pins-with-extras))
         requirements (reductions + (map :xp sorted-upgrades))
         required (fn [xp-required] (ffirst (filter (fn [[_ xp]] (> xp xp-required)) (map-indexed vector requirements))))
         needed-for-level (take (required xp-required) sorted-upgrades)]
-    (merge {:coins-missing (max (-> needed-for-level last :coins-missing -) 0)
-            :pins (into {} (map (fn [[rarity ps]]
+    {:coins-missing (max (-> needed-for-level last :coins-missing -) 0)
+     :days-played (days-played)
+     :pins (into {} (map (fn [[rarity ps]]
                                   {rarity
                                    (into {}
                                          (map (fn [[pin-name pins-for-id]]
@@ -230,11 +236,10 @@
                                                   :level (apply max (map :pin-level pins-for-id))
                                                   :cost (reduce + (map :coins (filter #(pos? (:missing %)) pins-for-id)))}})
                                               (group-by :pin-name ps)))})
-                                (group-by :rarity needed-for-level)))}
-           per-day)))
-
+                                (group-by :rarity needed-for-level)))}))
+          
 (defn- progress-with-crystals [state]
-  (let [update-state (fn [{:keys [pins days-played coins-missing coins-per-day commons-per-day rares-per-day epics-per-day legendaries-per-day]} b]
+  (let [update-state (fn [{:keys [pins days-played coins-missing coins-per-day commons-per-day rares-per-day epics-per-day legendaries-per-day] :as dbug} b]
                        {:pins (add-bundle b pins)
                         :days-played days-played
                         :coins-missing (- coins-missing (:coins b))
@@ -250,7 +255,7 @@
                   :epics (* (:epics bundle) percentage)
                   :legendaries (* (:legendaries bundle) percentage)})]
     (loop [crystals @crystals
-           state state
+           state (assoc state :coins-per-day @coins-per-day :commons-per-day @commons-per-day :rares-per-day @rares-per-day :epics-per-day @epics-per-day :legendaries-per-day @legendaries-per-day)
            pd (progress state)]
       (let [b1p (bundle-progress (first bundles) state)
             b2p (bundle-progress (last bundles) state)
@@ -266,21 +271,20 @@
 
 (defn- last-level-estimates []
   (let [current-xp (current-xp)
-        per-day (per-day)
         xp (if (and (> @target-level 1) (<= @target-level 20))
              (nth total-xps (- @target-level 2))
              0)
         xp-progress (double (/ current-xp (last total-xps)))]
+    (when-not @override? (per-day))
     (if (< current-xp xp)
-      (let [state (make-state per-day (- xp current-xp))
-            path (->> state :pins vals (map vals) flatten)
+      (let [state (make-state (- xp current-xp))
             commons-missing (-> state :pins :common (missing))
             rares-missing (-> state :pins :rare (missing))
             epics-missing (-> state :pins :epic (missing))
             legendaries-missing (-> state :pins :legendary (missing))
             progress-with-crystals (progress-with-crystals state)]
         {:xp-progress xp-progress
-         :path path
+         :path (:pins state)
          :coins-required (:coins-missing state)
          :commons-required commons-missing
          :rares-required rares-missing
@@ -295,9 +299,36 @@
                                         {:name (:name bundle) :value (* (/ (- progress bundle-progress) (:crystals bundle)) 1440)})))
          :date (when (pos? progress-with-crystals)
                  (completion-date (int progress-with-crystals)))
-         :best-pin (best-pin per-day)})
+         :best-pin (best-pin)})
       {:xp-progress xp-progress
-       :best-pin (best-pin per-day)})))
+       :best-pin (best-pin)})))
+
+(defn- do-input [id label-text type step atom]
+  (let [on-change-fn (fn [event]
+                       (let [v (-> event .-target .-value)]
+                         (condp = type
+                           "number" (int v)
+                           "checkbox" (not @override?)
+                           :default v)))                
+        input-map {:type type
+                   :id id
+                   :step step
+                   :value (if (= step "1") @atom (gstring/format "%.2f" @atom))
+                   :on-change #(reset! atom (on-change-fn %))}]
+    [:span {:class id}
+     [:label {:for id} label-text]
+     [:input (if (= type "number")
+               (assoc input-map :min 0)
+               input-map)]]))
+
+(defn- override []
+  [:div.override
+   (do-input "override" "Override:" "checkbox" "1" override?)
+   (do-input "commonspd" "Commons per day:" "number" "0.01" commons-per-day)
+   (do-input "rarespd" "Rares per day:" "number" "0.01" rares-per-day)
+   (do-input "epicspd" "Epics per day:" "number" "0.01" epics-per-day)
+   (do-input "legendariespd" "Legendaries per day:" "number" "0.01" legendaries-per-day)
+   (do-input "coinspd" "Coins per day:" "number" "0.01" coins-per-day)])
 
 (defn- path [{:keys [date path coins-required commons-required rares-required epics-required legendaries-required xp-progress best-pin bundles deals] :as est}]
   [:div.stats
@@ -312,33 +343,40 @@
     (when-not (or (blank? @start-date) (nil? est))
       [:span
        [:p.path-header (str "ETA: " date)]
-       [:p.path-row {:class (if (zero? coins-required) "green" "red")}
-        (str coins-required " coins missing")]
-       [:p.path-row {:class (if (zero? commons-required) "green" "red")}
-        (str commons-required " commons missing")]
-       [:p.path-row {:class (if (zero? rares-required) "green" "red")}
-        (str rares-required " rares missing")]
-       [:p.path-row {:class (if (zero? epics-required) "green" "red")}
-        (str epics-required " epics missing")]
-       [:p.path-row {:class (if (zero? legendaries-required) "green" "red")}
-        (str legendaries-required " legendaries missing")]
-       (for [{:keys [pin-name level missing]} path]
+       [:div.missing
+        [:div.overall
+         [:p.path-row {:class (if (zero? coins-required) "green" "red")}
+          (str coins-required " coins missing")]
+[:p.path-row {:class (if (zero? commons-required) "green" "red")}
+ (str commons-required " commons missing")]
+[:p.path-row {:class (if (zero? rares-required) "green" "red")}
+ (str rares-required " rares missing")]
+[:p.path-row {:class (if (zero? epics-required) "green" "red")}
+ (str epics-required " epics missing")]
+[:p.path-row {:class (if (zero? legendaries-required) "green" "red")}
+ (str legendaries-required " legendaries missing")]]
+       [:div.pins.commons
+       (for [{:keys [pin-name level missing]} (->> path :common vals)]
          ^{:key (str pin-name level)}
          [:p.path-row {:class (if (zero? missing) "green" "red")}
-          (str (upper-case pin-name) " to level " level " (" missing " missing)")])])]
-   [:div.deals
-    [:div (str "XP progress: " (gstring/format "%.2f" (* 100 xp-progress)) "%")]
-    [:div (str "Best pin: " (-> best-pin :name upper-case) " (maxed on " (-> best-pin :days int completion-date) ")")]
-    (when-not (empty? bundles)
-      [:div "Bundles (value minutes per crystal):"
-       (for [{:keys [name value]} bundles]
-         ^{:key (str name value)}
-         [:p (str (upper-case name) " (" (gstring/format "%.2f" value) " mpc)")])])
-    [:div "Daily deals worth taking:" (if-not (empty? deals)
-                                        (for [deal deals]
-                                          ^{:key (str deal)}
-                                          [:p (upper-case deal)])
-                                        [:p "None"])]]])
+          (str (upper-case pin-name) " to level " level " (" missing " missing)")])]
+       [:div.pins.rares
+        (for [{:keys [pin-name level missing]} (->> path :rare vals)]
+          ^{:key (str pin-name level)}
+          [:p.path-row {:class (if (zero? missing) "green" "red")}
+           (str (upper-case pin-name) " to level " level " (" missing " missing)")])]
+       [:div.pins.epics
+        (for [{:keys [pin-name level missing]} (->> path :epic vals)]
+          ^{:key (str pin-name level)}
+          [:p.path-row {:class (if (zero? missing) "green" "red")}
+           (str (upper-case pin-name) " to level " level " (" missing " missing)")])]
+       [:div.pins.legendaries
+        (for [{:keys [pin-name level missing]} (->> path :legendary vals)]
+          ^{:key (str pin-name level)}
+          [:p.path-row {:class (if (zero? missing) "green" "red")}
+           (str (upper-case pin-name) " to level " level " (" missing " missing)")])]]])]
+    [:div.other-inputs
+     [override]]])
 
 (defn- pin-inputs []
   [:div.pin-inputs
@@ -367,29 +405,13 @@
           [:span.pin-progress progress]
           (upgradeable pin)]])))])
 
-(defn- do-input [id label-text type atom]
-  (let [on-change-fn (fn [event]
-                       (let [v (-> event .-target .-value)]
-                         (if (= type "number")
-                           (int v)
-                           v)))
-        input-map {:type type
-                   :id id
-                   :value @atom
-                   :on-change #(reset! atom (on-change-fn %))}]
-    [:span {:class id}
-     [:label {:for id} label-text]
-     [:input (if (= type "number")
-               (assoc input-map :min 0)
-               input-map)]]))
-
-(defn- extra-inputs []
+(defn- new-pins []
   [:span
    [:p "What if they were to add new pins?"]
-   (do-input "extra-commons" "Commons:" "number" extra-commons)
-   (do-input "extra-rares" "Rares:" "number" extra-rares)
-   (do-input "extra-epics" "Epics:" "number" extra-epics)
-   (do-input "extra-legendaries" "Legendaries:" "number" extra-legendaries)])
+   (do-input "extra-commons" "Commons:" "number" "1" extra-commons)
+   (do-input "extra-rares" "Rares:" "number" "1" extra-rares)
+   (do-input "extra-epics" "Epics:" "number" "1" extra-epics)
+   (do-input "extra-legendaries" "Legendaries:" "number" "1" extra-legendaries)])
 
 (defn- menu []
   [:nav.menu
@@ -404,12 +426,12 @@
     (if (zero? @menu-item)
       [:div
        [:div.other-inputs
-        (do-input "start-date" "Start date:" "date" start-date)
-        (do-input "coins" "Coins:" "number" coins)
-        (do-input "crystals" "Crystals:" "number" crystals)]
+        (do-input "start-date" "Start date:" "date" "1" start-date)
+        (do-input "coins" "Coins:" "number" "1" coins)
+        (do-input "crystals" "Crystals:" "number" "1" crystals)]
        [pin-inputs]
        [:div.other-inputs
-        [extra-inputs]]]
+        [new-pins]]]
       [path (last-level-estimates)])]])
 
 (defn- find-pin [id]

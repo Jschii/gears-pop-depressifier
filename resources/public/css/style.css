@@ -57,6 +57,23 @@ input {
     margin-right: 20px;
 }
 
+div.override {
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: center;
+    width: 80%;
+}
+
+div.override input {
+    width: 160px;
+}
+
+div.override label {
+    display: inline-block;
+    width: 200px;
+    padding: 10px;
+}
+
 .menu {
     position: fixed;
     background-color: darkgrey;
@@ -116,13 +133,9 @@ li.selected {
 
 .other-inputs {
     display: flex;
-    margin: auto;
+    flex-flow: row wrap;
     justify-content: center;
     width: 80%;
-}
-
-.other-inputs p {
-    text-align: center;
 }
 
 .other-inputs >span {
@@ -141,18 +154,13 @@ li.selected {
     min-width: 120px;
 }
 
-
 .stats {
-    display: flex;
-    flex-flow: row wrap;
-    justify-content: center;
     width: 80%;
 }
 
-.estimates {
-    width: 40%;
-}
-
-.deals {
-    width: 40%;
+.missing {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-evenly;
+    align-items: flex-start;
 }
