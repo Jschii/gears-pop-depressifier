@@ -119,7 +119,8 @@
                    {:name "gabe diaz" :rarity :legendary}
                    {:name "tai kaliso" :rarity :rare}
                    {:name "sid redburn" :rarity :epic}
-                   {:name "shock sentry" :rarity :epic}])
+                   {:name "shock sentry" :rarity :epic}
+                   {:name "alex brand" :rarity :epic}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
 
