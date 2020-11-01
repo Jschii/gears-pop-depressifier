@@ -124,18 +124,3 @@
                    {:name "bruce" :rarity :rare}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
-
-(defonce bundles [{:name "coin fortune"
-                   :crystals 4500
-                   :coins 1250000
-                   :commons 0
-                   :rares 0
-                   :epics 0
-                   :legendaries 0}
-                  {:name "legendary bronze"
-                   :crystals 2500
-                   :coins 125000
-                   :commons 6900
-                   :rares 1232
-                   :epics 215
-                   :legendaries 5.5}])
