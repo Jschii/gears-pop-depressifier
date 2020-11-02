@@ -21,7 +21,7 @@
         0
         (inc (nth (reductions + dupes) (- level 2)))))))
 
-#_(defn- pins-of-rarity [rarity]
+(defn- pins-of-rarity [rarity]
   (count (filter #(= (:rarity %) rarity) all-pins)))
 
 (defn- format-percentage [percentage formatter]
@@ -32,17 +32,6 @@
         current-pins (+ (total-pins rarity level) dupes)
         max-pins (inc (reduce + (map :dupes costs)))]
     (format-percentage (double (/ current-pins max-pins)) "%.2f")))
-
-;todo
-#_(defn- best-pin []
-  (first
-   (sort-by :days <
-            (for [{:keys [name rarity level dupes]} @pins]
-              (let [costs (rarity costs)
-                    current-pins (+ (total-pins rarity level) dupes)
-                    max-pins (inc (reduce + (map :dupes costs)))
-                    missing (- max-pins current-pins)]
-                {:name name :days missing})))))
 
 (defn- upgradeable [p]
   (let [costs ((:rarity p) costs)]
@@ -66,28 +55,40 @@
 (defn- current-xp []
   (reduce + (map (fn [p] (reduce + (take (dec (:level p)) (map :xp ((:rarity p) costs))))) @pins)))
 
-#_(defn- current-pins [rarity]
-  (reduce + (map (fn [{:keys [rarity level dupes]}]
-                   (+ (total-pins rarity level) dupes))
-                 (filter #(= rarity (:rarity %)) @pins))))
+(defn- extract [pins field rarity]
+  (map field (filter #(= (:rarity %) rarity) (vals pins))))
 
 (defn- missing [state rarity]
-  (reduce + (map :missing (filter #(= (:rarity %) rarity) (vals (:pins state))))))
+  (reduce + (extract (:pins state) :missing rarity)))
 
-#_(defn- pin-progress [pins]
+(defn- progress [{:keys [pins coins-missing]}]
   (let [most-missing-of-rarity (fn [rarity]
-                                 (apply max (map :missing (vals (rarity pins)))))
-        rarity-progress (fn [rarity per-day]
-                          (/ (most-missing-of-rarity rarity) (/ per-day (pins-of-rarity rarity))))
-        add-commons (* days (/ @commons-per-day (pins-of-rarity :common)))
-        add-rares (* days (/ @rares-per-day (pins-of-rarity :rare)))
-        add-epics (* days (/ @epics-per-day (pins-of-rarity :epic)))
-        add-legendaries (* days (/ @legendaries-per-day (pins-of-rarity :legendary)))
-        coins-from-dupes (+ (reduce + (map #(* % 5) (filter pos? (map #(- (- % add-commons)) (map :missing-from-max (vals (pins :common vals)))))))
-                            (reduce + (map #(* % 50) (filter pos? (map #(- (- % add-rares)) (map :missing-from-max (vals (pins :rare vals)))))))
-                            (reduce + (map #(* % 1000) (filter pos? (map #(- (- % add-epics)) (map :missing-from-max (vals (pins :epic vals)))))))
-                            (reduce + (map #(* % 20000) (filter pos? (map #(- (- % add-legendaries)) (map :missing-from-max (vals (pins :legendary vals))))))))]
-    [days coins-from-dupes]))
+                                 (apply max (extract pins :missing rarity)))
+        runs-to-max-a-pin (min (/ (apply min (extract pins :missing :common)) (/ 294 (pins-of-rarity :common)))
+                               (/ (apply min (extract pins :missing :rare)) (/ 27 (pins-of-rarity :rare)))
+                               (/ (apply min (extract pins :missing :epic)) (/ 4.15 (pins-of-rarity :epic)))
+                               (/ (apply min (extract pins :missing :legendary)) (/ 0.145 (pins-of-rarity :legendary))))
+        _ (println runs-to-max-a-pin)
+        rarity-progress (fn [rarity per-run]
+                          (/ (most-missing-of-rarity rarity) (/ per-run (pins-of-rarity rarity))))
+        min-brumaks-needed (min (rarity-progress :common 294)
+                                (rarity-progress :rare 27)
+                                (rarity-progress :epic 4.15)
+                                (rarity-progress :legendary 0.0145))
+        days-remaining (/ (- (.getTime (js/Date. "2021-04-26T00:00:00")) (.now js/Date)) 86400000)]
+        (loop [runs min-brumaks-needed]
+          (let [add-commons (* runs (/ 294 (pins-of-rarity :common)))
+        add-rares (* runs (/ 27 (pins-of-rarity :rare)))
+        add-epics (* runs (/ 4.15 (pins-of-rarity :epic)))
+        add-legendaries (* runs (/ 0.0145 (pins-of-rarity :legendary)))
+        add-coins (* runs 2304)
+        coins-from-dupes (+ (reduce + (map #(* % 5) (filter pos? (map #(- (- % add-commons)) (extract pins :missing-from-max :common)))))
+                            (reduce + (map #(* % 50) (filter pos? (map #(- (- % add-rares)) (extract pins :missing-from-max :rare)))))
+                            (reduce + (map #(* % 1000) (filter pos? (map #(- (- % add-epics)) (extract pins :missing-from-max :epic)))))
+                            (reduce + (map #(* % 20000) (filter pos? (map #(- (- % add-legendaries)) (extract pins :missing-from-max :legendary))))))]
+          (if (< (- coins-missing (* days-remaining 22500)) (+ add-coins coins-from-dupes))
+            [(/ runs days-remaining) runs-to-max-a-pin]
+            (recur (inc runs)))))))
 
 (defn- next-upgrades [p]
   (let [costs ((:rarity p) costs)
@@ -139,6 +140,7 @@
         legendaries-missing (missing state :legendary)]
     {:xp-progress xp-progress
      :path (:pins state)
+     :brumaks (progress state)
      :coins-required (:coins-missing state)
      :commons-required commons-missing
      :rares-required rares-missing
@@ -162,10 +164,12 @@
                (assoc input-map :min 0)
                input-map)]]))
 
-(defn- path [{:keys [path coins-required commons-required rares-required epics-required legendaries-required xp-progress best-pin]}]
+(defn- path [{:keys [path brumaks coins-required commons-required rares-required epics-required legendaries-required xp-progress best-pin]}]
   [:div.stats
    [:div.estimates
       [:span
+       [:p.path-header (str "Brumaks per day: " (-> brumaks first Math/ceil))]
+       [:p.path-header (str "Brumaks to max a pin: " (-> brumaks last Math/ceil))]
        [:div.missing
         [:div.overall
          [:p.path-row {:class (if (zero? coins-required) "green" "red")}
