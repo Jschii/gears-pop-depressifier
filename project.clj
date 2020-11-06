@@ -3,9 +3,8 @@
                  [org.clojure/clojurescript "1.10.597"]
                  [reagent "0.10.0"]
                  [figwheel "0.5.19"]
-                 [alandipert/storage-atom "1.2.4"]
-                 [tick "0.4.23-alpha"]]
-
+                 [alandipert/storage-atom "1.2.4"]]
+                
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.19"]
             [lein-cljfmt "0.6.7"]]

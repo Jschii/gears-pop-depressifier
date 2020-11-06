@@ -124,3 +124,24 @@
                    {:name "bruce" :rarity :rare}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
+
+;brumak8
+(defonce horde {:commons 294
+                :rares 27
+                :epics 4.15
+                :legendaries 0; 0.0145
+                :coins 2304.5
+                :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}})
+;thunderland12
+#_(defonce horde {:commons 370
+                :rares 34
+                :epics 5.15
+                :legendaries 0.0155
+                :coins 2899.5})
+;leg bronze
+#_(defonce horde {:commons 243
+                :rares 30
+                :epics 12
+                :legendaries 1
+                :coins 3784
+                :exclude #{}})
