@@ -57,23 +57,6 @@ input {
     margin-right: 20px;
 }
 
-div.override {
-    display: flex;
-    flex-flow: column wrap;
-    justify-content: center;
-    width: 80%;
-}
-
-div.override input {
-    width: 160px;
-}
-
-div.override label {
-    display: inline-block;
-    width: 200px;
-    padding: 10px;
-}
-
 .menu {
     position: fixed;
     background-color: darkgrey;
@@ -91,9 +74,6 @@ div.override label {
 
 li {
     margin: 5px;
-}
-
-li {
     border: solid 2px black;
     border-radius: 5px;
 }
@@ -135,22 +115,13 @@ li.selected {
     display: flex;
     flex-flow: row wrap;
     justify-content: center;
-    width: 80%;
 }
 
 .other-inputs >span {
     padding: 10px;
 }
 
-.start-date >input {
-    min-width: 180px;
-}
-
 .coins >input {
-    min-width: 120px;
-}
-
-.crystals >input {
     min-width: 120px;
 }
 
