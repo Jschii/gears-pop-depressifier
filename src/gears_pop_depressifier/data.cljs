@@ -21,7 +21,7 @@
             (cost. 8900 170000 430)
             (cost. 14100 290000 600)
             (cost. 22400 490000 840)
-            (cost. 35500 830000 1180)]
+            (cost. 35500 830000 1180)] ;703
    :rare [(cost. 6 500 6)
           (cost. 10 850 8)
           (cost. 18 1400 11)
@@ -36,7 +36,7 @@
           (cost. 2200 170000 360)
           (cost. 3700 290000 550)
           (cost. 6300 490000 820)
-          (cost. 10800 830000 1230)]
+          (cost. 10800 830000 1230)] ;675
    :epic [(cost. 4 4000 25)
           (cost. 7 7000 37)
           (cost. 13 12000 54)
@@ -47,13 +47,13 @@
           (cost. 280 170000 380)
           (cost. 520 290000 560)
           (cost. 960 490000 830)
-          (cost. 1800 830000 1230)]
+          (cost. 1800 830000 1230)] ;675
    :legendary [(cost. 2 50000 250)
                (cost. 4 80000 300)
                (cost. 10 130000 360)
-               (cost. 20 210000 430)
-               (cost. 40 330000 510)
-               (cost. 90 520000 620)
+               (cost. 20 210000 430) ;488
+               (cost. 40 330000 510) ;647
+               (cost. 90 520000 620) ;839
                (cost. 190 830000 740)]})
 (def xps [20 30 50 80 120 180 300 450 700 1100 1700 2600 4100 6400 10000 16000 25000 38000 60000])
 (def total-xps (reductions + xps))
@@ -124,24 +124,41 @@
                    {:name "bruce" :rarity :rare}])
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
-
-;brumak8
+;brumak8 
 (defonce horde {:commons 294
                 :rares 27
                 :epics 4.15
-                :legendaries 0; 0.0145
-                :coins 2304.5
+                :legendaries 0.0145
+                :coins (+ 2304.5 250)
                 :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}})
+
+;;butcher8
+#_(defonce horde {:commons 159
+                  :rares 12
+                  :epics 0.15
+                  :legendaries 0
+                  :coins 775
+                  :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}})
+
+;butcher12
+#_(defonce horde {:commons 200
+                  :rares 15
+                  :epics 0.15
+                  :legendaries 0.00000000001
+                  :coins (+ 775 250)
+                  :exclude #{}})
+
 ;thunderland12
 #_(defonce horde {:commons 370
-                :rares 34
-                :epics 5.15
-                :legendaries 0.0155
-                :coins 2899.5})
+                  :rares 34
+                  :epics 5.15
+                  :legendaries 0.0155
+                  :coins (+ 2899.5 250)
+                  :exclude #{}})
 ;leg bronze
 #_(defonce horde {:commons 243
-                :rares 30
-                :epics 12
-                :legendaries 1
-                :coins 3784
-                :exclude #{}})
+                  :rares 30
+                  :epics 12
+                  :legendaries 1
+                  :coins 3784
+                  :exclude #{}})
