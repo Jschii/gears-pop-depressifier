@@ -22,11 +22,10 @@
         (inc (nth (reductions + dupes) (- level 2)))))))
 
 (defn- pins-of-rarity [rarity]
-  (condp = rarity
-    :common 16 ;19
-    :rare 13 ;16
-    :epic 17 ;20
-    :legendary 6))
+  (->> pins-with-ids
+       (filter #(= (:rarity %) rarity))
+       (remove #(boolean ((:exclude horde) (:id %))))
+       count))
 
 (defn- format-percentage [percentage formatter]
   (str (gstring/format formatter (* 100 percentage)) "%"))
