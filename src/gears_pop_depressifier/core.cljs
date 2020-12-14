@@ -5,13 +5,15 @@
             [goog.string.format]
             [alandipert.storage-atom :refer [local-storage]]
             [clojure.string :refer [upper-case join]]
-            [gears-pop-depressifier.data :refer [pins-with-ids costs total-xps horde]]))
+            [gears-pop-depressifier.data :refer [pins-with-ids costs total-xps hordes]]))
 
 (enable-console-print!)
 
 (defonce pins (local-storage (r/atom pins-with-ids) :pins-v2))
 (defonce coins (local-storage (r/atom 0) :coins))
 (defonce menu-item (r/atom 0))
+(defonce horde (r/atom (first hordes)))
+(defonce hide (r/atom false))
 
 (defn- total-pins [rarity level]
   (if (< level 2)
@@ -24,7 +26,7 @@
 (defn- pins-of-rarity [rarity]
   (->> pins-with-ids
        (filter #(= (:rarity %) rarity))
-       (remove #(boolean ((:exclude horde) (:id %))))
+       (remove #(boolean ((:exclude @horde) (:id %))))
        count))
 
 (defn- format-percentage [percentage formatter]
@@ -34,7 +36,7 @@
   (let [costs (rarity costs)
         current-pins (+ (total-pins rarity level) dupes)
         max-pins (inc (reduce + (map :dupes costs)))]
-    (format-percentage (double (/ current-pins max-pins)) "%.2f")))
+    (double (/ current-pins max-pins))))
 
 (defn- upgradeable [p]
   (let [costs ((:rarity p) costs)]
@@ -63,9 +65,9 @@
   (reduce + (extract (:pins state) :missing rarity)))
 
 (defn- doo [p adds]
-  (let [unreachable-count (count (if ((:exclude horde) (:id p))
-                                   (drop-while zero? (:missing p))
-                                   (drop-while #(> adds %) (:missing p))))
+  (let [unreachable-count (count (if ((:exclude @horde) (:id p))
+                                   (filter pos? (:missing p))
+                                   (drop-while #(>= adds %) (:missing p))))
         m (drop-last unreachable-count (:missing p))
         x (drop-last unreachable-count (:xp p))
         c (drop-last unreachable-count (:coin p))
@@ -110,12 +112,12 @@
          :coins (reduce + (map :cost p))}))))
 
 (defn- progress [{:keys [pins xp-required]}]
-  (let [p (remove (fn [p] (and ((:exclude horde) (:id p)) (pos? (:missing p)))) pins)
+  (let [p (remove (fn [p] ((:exclude @horde) (:id p))) pins)
         coins-needed (atom -1)
-        runs-to-max-a-pin [(/ (apply min (extract p :missing-from-max :common)) (/ (:commons horde) (pins-of-rarity :common)))
-                           (/ (apply min (extract p :missing-from-max :rare)) (/ (:rares horde) (pins-of-rarity :rare)))
-                           (/ (apply min (extract p :missing-from-max :epic)) (/ (:epics horde) (pins-of-rarity :epic)))
-                           (/ (apply min (extract p :missing-from-max :legendary)) (/ (:legendaries horde) (pins-of-rarity :legendary)))]
+        runs-to-max-a-pin [(/ (apply min (extract p :missing-from-max :common)) (/ (:commons @horde) (pins-of-rarity :common)))
+                           (/ (apply min (extract p :missing-from-max :rare)) (/ (:rares @horde) (pins-of-rarity :rare)))
+                           (/ (apply min (extract p :missing-from-max :epic)) (/ (:epics @horde) (pins-of-rarity :epic)))
+                           (/ (apply min (extract p :missing-from-max :legendary)) (/ (:legendaries @horde) (pins-of-rarity :legendary)))]
         days-remaining (/ (- (.getTime (js/Date. "2021-04-26T00:00:00")) (.now js/Date)) 86400000)
         foo (fn [added-pins rarity]
               (map (fn [[m x c]]
@@ -126,16 +128,19 @@
                         (flatten (extract p :missing rarity))
                         (flatten (extract p :xp rarity))
                         (flatten (extract p :coin rarity)))))]
-    (loop [runs 0]
-      (let [add-commons (* runs (/ (:commons horde) (pins-of-rarity :common)))
-            add-rares (* runs (/ (:rares horde) (pins-of-rarity :rare)))
-            add-epics (* runs (/ (:epics horde) (pins-of-rarity :epic)))
-            add-legendaries (* runs (/ (:legendaries horde) (pins-of-rarity :legendary)))
+    (loop [runs 0
+           step 200]
+      (let [add-commons (* runs (/ (:commons @horde) (pins-of-rarity :common)))
+            add-rares (* runs (/ (:rares @horde) (pins-of-rarity :rare)))
+            add-epics (* runs (/ (:epics @horde) (pins-of-rarity :epic)))
+            add-legendaries (if (zero? (:legendaries @horde))
+                              0
+                              (* runs (/ (:legendaries @horde) (pins-of-rarity :legendary))))
             coins-from-dupes (+ (reduce + (map #(* % 5) (filter pos? (map #(- (- % add-commons)) (extract p :missing-from-max :common)))))
                                 (reduce + (map #(* % 50) (filter pos? (map #(- (- % add-rares)) (extract p :missing-from-max :rare)))))
                                 (reduce + (map #(* % 1000) (filter pos? (map #(- (- % add-epics)) (extract p :missing-from-max :epic)))))
                                 (reduce + (map #(* % 20000) (filter pos? (map #(- (- % add-legendaries)) (extract p :missing-from-max :legendary))))))
-            add-coins (+ (* runs (:coins horde))
+            add-coins (+ (* runs (:coins @horde))
                          (* days-remaining 28928.57)
                          coins-from-dupes
                          @coins)
@@ -150,15 +155,17 @@
         (if (and (>= (:xp addz) xp-required)
                  (pos? @coins-needed)
                  (>= add-coins @coins-needed))
-          (let [pc (do-add p [add-commons add-rares add-epics add-legendaries])
-                coin-discount (- @coins-needed (:coins pc))
-                run-discount (int (/ coin-discount (/ @coins-needed runs)))]
-            {:runs (- runs run-discount)
-             :pin-runs runs-to-max-a-pin
-             :days days-remaining
-             :pins (:pins pc)
-             :coins-missing (max (- (:coins pc) @coins) 0)})
-          (recur (inc runs)))))))
+          (if-not (= step 1)
+            (recur (- runs (dec step)) 1)
+            (let [pc (do-add pins [add-commons add-rares add-epics add-legendaries])
+                  coin-discount (- @coins-needed (:coins pc))
+                  run-discount (int (/ coin-discount (/ @coins-needed runs)))]
+              {:runs (- runs run-discount)
+               :pin-runs runs-to-max-a-pin
+               :days days-remaining
+               :pins (:pins pc)
+               :coins-missing (max (- (:coins pc) @coins) 0)}))
+          (recur (+ runs step) step))))))
 
 (defn- next-upgrades [p]
   (let [costs ((:rarity p) costs)
@@ -171,13 +178,6 @@
             missing (max (- (needed-for-level l) owned) 0)]
         (assoc cost
                :cx (/ (:coins cost) (:xp cost))
-               :px (/ (/ missing
-                         (condp = (:rarity p)
-                           :common (:commons horde)
-                           :rare (:rares horde)
-                           :epic (:epics horde)
-                           :legendary (:legendaries horde)))
-                      (:xp cost))
                :pin-name (:name p)
                :rarity (:rarity p)
                :pin-level (+ l 2)
@@ -186,7 +186,7 @@
 
 (defn- make-state []
   (let [xp-required (- (last total-xps) (current-xp))
-        sorted-upgrades (sort-by (juxt :cx :px)  (mapcat next-upgrades @pins))
+        sorted-upgrades (sort-by :cx (mapcat next-upgrades @pins))
         pins (map (fn [[pin-name pins-for-id]]
                     {:pin-name pin-name
                      :id (-> pins-for-id first :id)
@@ -235,11 +235,18 @@
 
 (defn- path [{:keys [path runs coins-required commons-required rares-required epics-required legendaries-required xp-progress]}]
   [:div.stats
+   [:select {:value (:name @horde)
+             :size (count hordes)
+             :on-change #(reset! horde (first (filter (fn [h]
+                                                        (= (:name h) (.. % -target -value))) hordes)))}
+    (for [h hordes]
+      ^{:key (:name h)}
+      [:option {:value (:name h)} (:name h)])]
    [:div.estimates
     [:span
      [:p.path-header (str "XP-progress : " (format-percentage xp-progress "%.2f"))]
-     [:p.path-header (str "Brumaks to level 20 : " (nth runs 0) " (per day: " (Math/ceil (nth runs 1)) ")")]
-     [:p.path-header (str "Brumaks to max pin  : " (join ", " (map Math/ceil (drop 2 runs))))]
+     [:p.path-header (str "Runs to level 20 : " (nth runs 0) " (per day: " (Math/ceil (nth runs 1)) ")")]
+     [:p.path-header (str "Runs to max pin  : " (join ", " (map Math/ceil (drop 2 runs))))]
      [:div.missing
       [:div.overall
        [:p.path-row {:class (if (zero? coins-required) "green" "red")}
@@ -277,28 +284,30 @@
   [:div.pin-inputs
    (doall
     (for [[index pin] (map-indexed vector @pins)]
-      (let [progress (calc-percentage pin)
+      (let [perc (calc-percentage pin)
+            progress (format-percentage perc "%.2f")
             update (fn [what event] (swap! pins assoc-in [index what] (-> event .-target .-value int)))]
-        ^{:key (:name pin)}
-        [:div
-         [:div.pin-input
-          [:span.pin-name (:name pin)]
-          [:label {:for "level"} "Level:"]
-          [:input {:type "number"
-                   :id "level"
-                   :min 0
-                   :max (inc (count ((:rarity pin) costs)))
-                   :value (:level pin)
-                   :on-change (partial update :level)}]
-          [:label {:for "dupes"} "Pins:"]
-          [:input {:type "number"
-                   :id "dupes"
-                   :min 0
-                   :value (:dupes pin)
-                   :on-change (partial update :dupes)}]]
-         [:div.pin-progress
-          [:span.pin-progress progress]
-          (upgradeable pin)]])))])
+        (when-not (and @hide (>= perc 1))
+          ^{:key (:name pin)}
+          [:div
+           [:div.pin-input
+            [:span.pin-name (:name pin)]
+            [:label {:for "level"} "Level:"]
+            [:input {:type "number"
+                     :id "level"
+                     :min 0
+                     :max (inc (count ((:rarity pin) costs)))
+                     :value (:level pin)
+                     :on-change (partial update :level)}]
+            [:label {:for "dupes"} "Pins:"]
+            [:input {:type "number"
+                     :id "dupes"
+                     :min 0
+                     :value (:dupes pin)
+                     :on-change (partial update :dupes)}]]
+           [:div.pin-progress
+            [:span.pin-progress progress]
+            (upgradeable pin)]]))))])
 
 (defn- menu []
   [:nav.menu
@@ -313,7 +322,13 @@
     (if (zero? @menu-item)
       [:div
        [:div.other-inputs
-        (do-input "coins" "Coins:" "number" "1" coins)]
+        (do-input "coins" "Coins:" "number" "1" coins)
+        [:button {:type "button"
+                  :class "button"
+                  :on-click #(swap! hide not)}
+         (if @hide
+           "Show maxed pins"
+           "Hide maxed pins")]]
        [pin-inputs]]
       [path (last-level-estimates)])]])
 

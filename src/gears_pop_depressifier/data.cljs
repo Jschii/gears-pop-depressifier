@@ -125,40 +125,31 @@
 (defonce pins-with-ids (for [[index pin] (map-indexed vector all-pins)]
                          (assoc pin :id index :level 0 :dupes 0)))
 ;brumak8 
-(defonce horde {:commons 294
-                :rares 27
-                :epics 4.15
-                :legendaries 0.0145
-                :coins (+ 2304.5 250)
-                :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}})
-
-;;butcher8
-#_(defonce horde {:commons 159
+(defonce hordes [{:name "brumak8"
+                  :commons 294
+                  :rares 27
+                  :epics 4.15
+                  :legendaries 0.0145
+                  :coins (+ 2304.5 250)
+                  :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}}
+                 {:name "butcher8"
+                  :commons 159
                   :rares 12
                   :epics 0.15
                   :legendaries 0
                   :coins 775
-                  :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}})
-
-;butcher12
-#_(defonce horde {:commons 200
+                  :exclude #{0 3 4 14 41 46 58 59 60 61 62 63}}
+                 {:name "butcher12"
+                  :commons 200
                   :rares 15
                   :epics 0.15
-                  :legendaries 0.00000000001
+                  :legendaries 0
                   :coins (+ 775 250)
-                  :exclude #{}})
-
-;thunderland12
-#_(defonce horde {:commons 370
+                  :exclude #{}}
+                 {:name "thunderland12"
+                  :commons 370
                   :rares 34
                   :epics 5.15
                   :legendaries 0.0155
                   :coins (+ 2899.5 250)
-                  :exclude #{}})
-;leg bronze
-#_(defonce horde {:commons 243
-                  :rares 30
-                  :epics 12
-                  :legendaries 1
-                  :coins 3784
-                  :exclude #{}})
+                  :exclude #{}}])
